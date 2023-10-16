@@ -1,0 +1,191 @@
+---
+title: "R Notebook: First Practical 2023"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+In this practical you will be manipulating network data using the igraph package in R. Call R and change directory to the folder where you store your networks files. Once in the R environment please type, to make sure the package is installed 
+```{r}
+install.packages("igraph")
+```
+
+The igraph package documentation can be found at https://cran.r-project.org/web/packages/igraph/igraph.pdf
+
+```{r}
+library(igraph)
+```
+
+  
+
+Part A: Network data visualisation and summaries
+
+First we look at a data set of protein interactions in yeast. The yeast data are in the so-called .net format, which comes from another network package called Pajek. The .net format is supported by igraph. Remove self-loops and multiple edges, and then have a look at the data. 
+
+
+```{r}
+yeast<-read.graph("http://www.stats.ox.ac.uk/~reinert/dtc/YeastL.net", format="pajek")
+graph <-simplify(yeast, remove.multiple=TRUE, remove.loops=TRUE)
+V(graph)$id
+plot(graph,vertex.label=V(graph)$name)
+```
+
+This plot is not so helpful but you can vary the plot parameters; for example 
+
+```{r}
+plot(graph, layout=layout_nicely,vertex.label.dist=0, vertex.size=2, vertex.label="")
+```
+Look at some properties of the network:
+
+```{r}
+graph.density(graph, loops=FALSE)
+average.path.length(graph, directed=FALSE, unconnected=TRUE)
+transitivity(graph, type=c("undirected"), vids=NULL)
+diameter(graph, directed = FALSE, unconnected = TRUE, weights = NULL)
+```
+The degrees of every vertex can also be reported; to find the average degree use 
+```{r}
+summary(degree(graph))
+```
+For vertex betweenness: 
+```{r}
+bet<-betweenness(graph, v=V(graph), directed = FALSE) 
+summary(bet) 
+hist(bet) 
+hist(bet, breaks="Scott", xlab="Betweenness", xlim = c(0,6e+04))
+```
+The hist command also has other options; to find out more, 
+```{r}
+?hist
+```
+
+There are a number of other network summaries which you could try out; have a look at the igraph package documentation.
+
+Part B: Simulating networks 
+
+In the second part of this practical the aim is to simulate networks from some random network models. The igraph package makes it easy to simulate from different random graph models. 
+
+1 Erdös-Rényi graphs 
+
+To generate an Erdös-Rényi random graph with 10,000 vertices and edge probability 1/1000, or 2/1000, we can use 
+
+```{r}
+er1<- sample_gnp(10000, 1/1000) 
+er2<- sample_gnp(10000, 2/1000) 
+
+```
+We can compare their degree distributions, i.e. the vector which counts the number of vertices of degree 0, degree 1, and so on. In R the function par is used to control graphical parameters. To generate an array of two plots in the same display try
+```{r}
+par(mfrow=c(2,1))
+hist(degree(er1))
+hist(degree(er2))
+
+```
+You may also be interested in 
+```{r}
+mean(degree(er1))
+mean(degree(er2))
+
+```
+Let’s look at their clustering coefficients; the default option is the global clustering coefficient: 
+
+```{r}
+transitivity(er1, type="global")
+transitivity(er2, type="global")
+
+```
+What would you have expected to see? 
+
+
+2. Watts-Strogatz small worlds 
+
+For a Watts-Strogatz network we have to specify the dimension of the lattice, the number of vertices, the size of the neighbourhood, and the rewiring probability. We can use the command 
+```{r}
+ws1<-sample_smallworld(1, 100, 4, 0.1)
+```
+
+where 1 is the dimension, 100 is the number of vertices, 4 is the neighbourhood size, and 0.1 is the rewiring probability. Plot the network using 
+```{r}
+plot(ws1, layout=layout.circle)
+
+```
+
+Find the average degree, the clustering coefficient and the average shortest path. What happens if p=0.05? 
+
+3. Barabasi-Albert networks 
+
+For a Barabasi-Albert network on 10,000 vertices with preferential attachment proportional to the vertex degree, we can use 
+```{r}
+bar1<-sample_pa(100, directed=FALSE)
+
+```
+For a Barabasi-Albert network on 100 vertices with preferential attachment proportional to the square of the vertex degree, we can use 
+```{r}
+bar2<-sample_pa(100, power=2, directed=FALSE)
+
+```
+Plot as a tree: 
+```{r}
+plot(bar1, layout=layout_as_tree,vertex.label="")
+
+```
+Find the average degree, the clustering coefficient and the average shortest path length. 
+
+
+4. Configuration model 
+
+The sequence of degrees in the Florentine marriage network is 1, 3, 2, 3, 3, 1, 4, 1, 6, 1, 3, 0, 3, 2, 4, 3. 
+Generate a network under the configuration model using this degree sequence: 
+
+```{r}
+dflo<-c(1,3,2,3,3,1,4,1,6,1,3,0,3,2,4,3)
+deggraph<-sample_degseq(dflo)
+summary(deggraph) 
+
+```
+If you want to make sure that the network is simple then you can use instead 
+```{r}
+deggraph<- sample_degseq (dflo, method="simple.no.multiple")
+```
+Plot your simulated network. Is your simulated network connected? 
+
+You can use 
+```{r}
+count_triangles(deggraph, vids = V(deggraph))
+length(triangles(deggraph))
+```
+to count the number of triangles a vertex is part of. How do you obtain the number of triangles in the network? triangles(graph)
+
+Compare this to the local clustering coefficient: 
+```{r}
+transitivity(deggraph, type="local")
+```
+Homework problem 
+
+Create a random graph G from a model of your choice, on 500 vertices, with parameter value of your choice, and calculate the global clustering coefficient. Repeat 100 times and make a histogram for the global clustering coefficients. You could use (and adapt) the R code 
+
+```{r}
+vt<-c(1:100)
+vd = c(1:100)
+vc = c(1:100)
+for ( i in 1:100)
+{g<- sample_gnp(500, 0.2)
+vt[i]<-transitivity(g, type="global")
+vd[i] <- mean(degree(g))
+vc[i] <- no.clusters(g)
+}
+hist(vt, main = "global clustering coefficient", xlab = "global clustering coefficient")
+abline(v = mean(vt), col = "red", lty = 2, lwd = 2)
+
+hist(vd, main = "Mean Degree")
+abline(v = mean(vd), col = "red", lty = 2, lwd = 2)
+
+hist(vc, main = "# Connected Components", xlab = "# conn. comp.")
+abline(v = mean(vc), col = "red", lty = 2, lwd = 2)
+```
+Repeat for the average degree and for the number of connected components. Vary the parameter value; try at least three different values. What do you find? 
+
+
+
