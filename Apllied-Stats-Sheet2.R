@@ -60,3 +60,30 @@ summary(model)
 #does (b) the yearly change in body fat percentage differ for men and women?
 # no, insufficient evidence to reject H0 (Women are baseline)
 
+##3
+
+#a 
+1 - pf(34.84, 1, 17)
+
+#b
+1 - pt(2.421, 17)
+
+#c
+2 * (1 - pt(abs(-0.96), 17))
+
+#d
+1 - pf(1.284792, 5, 17)
+
+#check
+a <- read.table("http://www.stats.ox.ac.uk/~laws/SB1/data/pearce.apple.txt", header = TRUE, stringsAsFactors = TRUE)
+a$treatment <- relevel(a$treatment, ref = "S")
+
+mod_intercept <- lm(yield ~ 1, data=a)
+mod_history <- lm(yield ~ history, data=a)
+mod_full <- lm(yield ~ history + treatment, data=a)
+anova_intercept_history <- anova(mod_intercept, mod_history)
+anova_history_full <- anova(mod_history, mod_full)
+
+print(anova_intercept_history)
+print(anova_history_full)
+
