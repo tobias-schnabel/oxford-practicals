@@ -1,0 +1,14 @@
+---
+title: "Applied-Stats-Practical-2"
+author: "Tobias Schnabel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse, ggplot2)
+library(stargazer)
+```
+
+
