@@ -308,9 +308,9 @@
     },
     "dbplyr": {
       "Package": "dbplyr",
-      "Version": "2.3.4",
+      "Version": "2.4.0",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "DBI",
         "R",
@@ -332,7 +332,7 @@
         "vctrs",
         "withr"
       ],
-      "Hash": "63534894354af6b2587b7aa518a5193a"
+      "Hash": "59351f28a81f0742720b85363c4fdd61"
     },
     "digest": {
       "Package": "digest",
@@ -1225,6 +1225,17 @@
         "stringr"
       ],
       "Hash": "3838071b66e0c566d55cc26bd6e27bf4"
+    },
+    "stargazer": {
+      "Package": "stargazer",
+      "Version": "5.2.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "stats",
+        "utils"
+      ],
+      "Hash": "d313fa83180f3376229f98633813cd31"
     },
     "stringi": {
       "Package": "stringi",
