@@ -29,5 +29,17 @@ fig = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/F
 # 1. Perform an exploratory analysis of the data and summarise your ﬁndings. 
 # You may wish to consider some numerical summaries as well as some exploratory plots.
 
+head(data)
+str(data)
 
+# Sex coded as string, needs to be factor
+data$sex <- as.factor(data$sex)
 
+unique(data$course)
+# same thing for course
+data$course <- as.factor(data$course)
+
+unique(data$stroke)
+# repeat for stroke
+data$stroke <- as.factor(data$stroke)
+str(data)
