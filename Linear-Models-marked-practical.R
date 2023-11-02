@@ -1,11 +1,15 @@
 library(tidverse, ggplot2)
 library(stargazer, kableExtra)
 
-data <- read.csv("/Users/ts/Git/Practicals/swim.csv")
+data <- read.csv("swim.csv")
+
+## Set Paths for tables and figures
+tab = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/Tables"
+fig = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/Figures"
 
 ## Codebook ##
 # For each event, the times of the ﬁnalists are recorded as well as some other 
-#information about the event. The variables recorded are:
+# information about the event. The variables recorded are:
 # • event, the name of the event, e.g. “50 m Freestyle”
 # • dist, the length of the event, in metres
 # • stroke, the stroke swum in the event
@@ -24,5 +28,6 @@ data <- read.csv("/Users/ts/Git/Practicals/swim.csv")
 
 # 1. Perform an exploratory analysis of the data and summarise your ﬁndings. 
 # You may wish to consider some numerical summaries as well as some exploratory plots.
+
 
 
