@@ -13,15 +13,33 @@ colnames(marks)
 
 # so 4,5 indep of 1,2 given 3
 
-sigma = cov(marks)
-K <- solve(cov(marks))
-K_hat <- matrix(0, 5, 5)
-K_hat[1:3, 1:3] <- K[1:3, 1:3]
-K_hat[3:5, 3:5] <- K_hat[3:5, 3:5] + K[3:5, 3:5]
-K_hat[3, 3] <- K[3,3] - (1 / sigma[3, 3])
+Sigma = cov(marks)
 
-rownames(K_hat) <- rownames(K)
-colnames(K_hat) <- colnames(K)
-round(K_hat, 3)
-round(K, 3)
+K = matrix(0,5,5)
 
+K[1:3,1:3] = solve(Sigma[1:3,1:3])
+
+K[3:5,3:5] = K[3:5,3:5] + solve(Sigma[3:5,3:5])
+
+K[3,3] = K[3,3] - 1/Sigma[3,3]
+
+Sigma_hat = solve(K)
+
+round(Sigma_hat - S,10)
+
+round(solve(Sigma_hat), 10)
+
+# (c) Hence carry out a likelihood ratio test to see whether this model is 
+# a good ﬁt to the data.
+
+# We have 4 0-corrs so we  compare twice the diff in the log-likelihoods 
+# with Chi2-4df dsit
+
+tr <- function(x) sum(diag(x))
+
+n <- nrow(marks)
+
+fit = eval(-n*((log(det(Sigma)) - log(det(Sigma_hat))) - 
+           tr(Sigma %*% (solve(Sigma) - solve(Sigma_hat)))))
+
+1-pchisq(fit, 4)
