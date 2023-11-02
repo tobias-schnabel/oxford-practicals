@@ -16,12 +16,12 @@ colnames(marks)
 sigma = cov(marks)
 K <- solve(cov(marks))
 K_hat <- matrix(0, 5, 5)
-K_hat[1:2, 1:2] <- K[1:2, 1:2]
-K_hat[3,3] <- K[3,3]
+K_hat[1:3, 1:3] <- K[1:3, 1:3]
+K_hat[3:5, 3:5] <- K_hat[3:5, 3:5] + K[3:5, 3:5]
 K_hat[3, 3] <- K[3,3] - (1 / sigma[3, 3])
-K_hat[4:5, 4:5] = K[4:5, 4:5]
 
 rownames(K_hat) <- rownames(K)
 colnames(K_hat) <- colnames(K)
 round(K_hat, 3)
 round(K, 3)
+
