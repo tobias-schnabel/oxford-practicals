@@ -13,8 +13,9 @@ fig = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/F
 
 if (getwd() != root) {
   setwd(root)
-  data <- read.csv("swim.csv")
 }
+# Load data
+data <- read.csv("swim.csv")
 ## Codebook ##
 # For each event, the times of the ﬁnalists are recorded as well as some other 
 # information about the event. The variables recorded are:
@@ -55,8 +56,74 @@ str(data)
 #repeat for event
 data$event <- as.factor(data$event)
 
+# event is concat of dist and stroke, has 
+length(unique(data$event)) # 16
+# distinct levels, which blows up df used and ruins sensible interpretability
+subset(data, dist == 400 & stroke == "Butterfly")
+# we also have no current observations for 400m fly, which means we cannot use 
+# it to predict anyways
+
+mod0a <- lm(time ~ dist + sex + course + stroke, data = data)
+mod0b <- lm(time ~ . , data = data)
+mod0c <- lm(time ~ dist*stroke + sex + course, data = data)
+stargazer(mod0a, mod0b, mod0c, type = "text",
+          single.row = T,
+          omit = ".*",
+          column.labels = c("Without 'event'", "With 'event'",
+                            "with stroke * dist")) 
+
+# dropping event column makes a 
+# difference in terms of Adj R2, Residual SE
+
+# this is likely because the event variable has a base level of 50 free, which 
+# is captured by the intercept. In the third model, the intercept captures the 
+# product of the base levels of both dist and stroke
+# mod0b is more flexible, but also more prone to overfitting
+# constrains the relationship by assuming that the effect of a particular 
+# combination is the sum of the main effects plus an interaction effect. 
+# This is less flexible but might be more stable if there are many combinations.
+# Indeed we can see that there are 
+length(unique(data$dist)) * length(unique(data$stroke)) # 20 possible combinations
+# of dist and stroke, but there are only
+length(levels(data$event)) # 16 observed combinations
+
+# When we use event as a variable, Only the combinations that exist in the data 
+# will have their own coefficient. This means there will be 15 coefficients 
+# for the event variable (excluding the reference level).
+
+# When we instead interact dist and stroke, he model attempts to estimate 
+# coefficients for all possible interactions, even if certain combinations don't 
+# exist in the data. This can result in unstable or non-sensical coefficients for 
+# the missing combinations. The behavior of lm in R, in this case, depends on the 
+# contrasts used for factors. By default, R uses treatment contrasts, which 
+# compare each level to a reference level. If certain interactions don't exist, 
+# they won't get their own coefficient, but they can still influence the 
+# coefficients of the main effects.
+
+# In conclusion, since we can't use the event variable in prediction later on,
+# I drop it here, as optimizing models will lead to inclusion of this variable
+# which we cannot use to predict
+
 # New Object for clean data
-swim = data
+swim = data[, -1] # drop event for reasons stated above
+
+# Dist is technically numerical but practically has
+length(unique(swim$dist)) # 4 distinct levels
+# A classical ceteris paribus interpretation also does not really make sense
+# as race distances are fixed and "increasing by 1 unit" does not have a sensible
+# interpretation
+
+# Check whether it makes a difference for linear modelling
+swim$dist <- as.factor(swim$dist)
+mod0d <- lm(time ~ dist*stroke + sex + course , data = data[, -1])
+mod0e <- lm(time ~ dist*stroke + sex + course , data = swim)
+stargazer(mod0d, mod0e, type = "text",
+          single.row = T,
+          omit = ".*",
+          title = "Full Model with 'dist' cast as",
+          column.labels = c("Numeric", "Factor")) 
+
+# it does indeed make a (small) difference, factor takes up more df, but negligible
 
 # Summary Table
 swim %>%
@@ -77,39 +144,41 @@ box <- ggplot(swim, aes(x = stroke, y = time, fill = sex)) +
   geom_boxplot() +
   facet_wrap(~course)
 
-point <- ggplot(swim, aes(x = stroke, y = time, color = sex)) +
+point <- ggplot(swim, aes(x = stroke, y = time, color = sex, shape = factor(dist))) +
   geom_point(position = position_dodge(0.8)) +
   facet_wrap(~course) +
   theme_minimal() +
   labs(x = "Stroke", y = "Time (seconds)")
 
-interact <- ggplot(swim, aes(x = dist, y = time, color = stroke)) + 
-  geom_point() + 
-  geom_smooth(method = "lm", se = FALSE)
 
-## 2 Model building: Event is concat of dist and stroke
-mod1 <- lm(time ~ dist + sex + course + stroke, data = swim)
-summary(mod1)
+## 2 Model building: 
+
+# establish baseline
+mod1a <- lm(time ~ dist*stroke + sex + course , data = swim)
+mod1b <- lm(time ~ dist + stroke + sex + course , data = swim)
+
+stargazer(mod1a, mod1b, type = "text",
+          single.row = T,
+          omit = ".*",
+          title = "Baseline: 'dist' and 'factor' included as",
+          column.labels = c("Interaction", "Additive")) 
+# Interaction better across the board
+mod1 <- mod1a # set as baseline
 
 # Diagnostic plots for mod1
 par(mfrow = c(2, 2))  
 plot(mod1) 
 # RvF shows slight pattern
 # Q-Q shows deviance in tails
-# S-L suggests hetsced
+# S-L suggests hetsked
 
 # AIC
-step_aic <- stepAIC(mod1, direction = "both")
-summary(step_aic)
-# results are  favor of dropping dist and stroke
+step_aic <- stepAIC(mod1, direction = "backward")
+# AIC deteriorates when we drop predictors
 
 # BIC
-n <- nrow(swim)
-step_bic <- step(mod1, direction = "both", k = log(n))
-# results are  favor of dropping dist and stroke
-# this makes intuitive sense, all information contained in both dist and stroke 
-# is contained in event already
-mod2 <- lm(time ~ sex + course + event, data = swim)
+step_bic <- step(mod1, direction = "backward", k = log(nrow(swim)))
+# BIC also deteriorates when we drop predictors
 
 # Interaction terms
 # based on plot "point", Different strokes have varying times across both short 
@@ -141,7 +210,7 @@ summary(mod7)
 mod8 <- lm(time ~ -1 + sex*stroke + dist + course, data = swim)
 summary(mod8)
 
-mod9 <- lm(time ~ sex*stroke + dist + course, data = swim)
+mod9 <- lm(time ~ sex*course + dist*stroke, data = swim)
 summary(mod9)
 
 # get all models into list
@@ -151,6 +220,9 @@ model_list <- mget(grep("^mod[1-9]$", ls(), value = TRUE))
 sapply(model_list, AIC)
 sapply(model_list, BIC)
 # model 6 is best in terms of AIC, model 7 in terms of BIC
+
+# However, can't use event as factor because interacting it destroys df and 
+# interpretability
 
 
 # Diagnostic plots for mod6
@@ -227,18 +299,6 @@ new_races$sex <- as.factor(new_races$sex)
 new_races$course <- as.factor(new_races$course)
 # repeat for stroke
 new_races$stroke <- as.factor(new_races$stroke)
-
-# build event variable
-new_races$event <- paste0(new_races$dist, " m ", 
-                     new_races$stroke)
-
-# Clean up edge case of medley
-new_races[4,6] <- "100 m Individual Medley"
-new_races$event <- as.factor(new_races$event)
-
-# We're still adding a level not seen in training data, which means we cannot 
-# use event as predictor
-
 
 # New Object for clean data
 swim_test = new_races
