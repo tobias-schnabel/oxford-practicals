@@ -4,13 +4,17 @@ library(stargazer)
 library(kableExtra)
 library(MASS)
 
-data <- read.csv("swim.csv")
+
 
 ## Set Paths for tables and figures
 root = "/Users/ts/Git/Practicals"
 tab = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/Tables"
 fig = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/Figures"
 
+if (getwd() != root) {
+  setwd(root)
+  data <- read.csv("swim.csv")
+}
 ## Codebook ##
 # For each event, the times of the ﬁnalists are recorded as well as some other 
 # information about the event. The variables recorded are:
@@ -83,8 +87,8 @@ interact <- ggplot(swim, aes(x = dist, y = time, color = stroke)) +
   geom_point() + 
   geom_smooth(method = "lm", se = FALSE)
 
-## 2 Model building
-mod1 <- lm(time ~ dist + sex + course + stroke + event, data = swim)
+## 2 Model building: Event is concat of dist and stroke
+mod1 <- lm(time ~ dist + sex + course + stroke, data = swim)
 summary(mod1)
 
 # Diagnostic plots for mod1
@@ -134,8 +138,14 @@ summary(mod6)
 mod7 <- lm(time ~ -1 + event*sex*course, data = swim)
 summary(mod7)
 
+mod8 <- lm(time ~ -1 + sex*stroke + dist + course, data = swim)
+summary(mod8)
+
+mod9 <- lm(time ~ sex*stroke + dist + course, data = swim)
+summary(mod9)
+
 # get all models into list
-model_list <- mget(grep("^mod[1-8]$", ls(), value = TRUE))
+model_list <- mget(grep("^mod[1-9]$", ls(), value = TRUE))
 
 #compare ICs:
 sapply(model_list, AIC)
@@ -151,7 +161,13 @@ plot(mod6)
 par(mfrow = c(2, 2))  
 plot(mod7)    
 
-# SIide-by-side of baseline and mod7
+
+# Prediction plot
+coef_plot <- ggplot(coef(step_model), aes(x = names(coef(step_model)), y = coef(step_model))) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Side-by-side of baseline and mod7
 # Set up plotting parameters
 setwd(fig)
 png("diag_s_by_s.png", width = 1400, height = 2800, res = 80)
@@ -169,6 +185,9 @@ plot(mod7, which = 3) #, main = "Model 7: Scale-Location")
 plot(mod1, which = 5) #, main = "Model 1: Residuals vs Leverage")
 plot(mod7, which = 5) #, main = "Model 7: Residuals vs Leverage")
 dev.off()
+
+
+
 setwd(root)
 
 # Prep reg table with robust SEs for better inference given Heterosked.
@@ -187,6 +206,42 @@ stargazer(mod1, mod7, title="Regression Results", label="tab:results",
           no.space=TRUE, 
           single.row=TRUE, 
           header=FALSE, 
-          omit.stat=c("adj.rsq"), #, "f", "ser" 
           digits=3)
+          # omit.stat=c("adj.rsq"), #, "f", "ser" 
 setwd(root)
+
+
+# Data for prediction intervals
+new_races <- data.frame(
+  name = c("RaceA", "RaceB", "RaceC", "RaceD"),
+  dist = c(400, 50, 400, 100),
+  stroke = c("Freestyle", "Backstroke", "Butterfly", "Medley"),
+  sex = rep("F", 4),
+  course = rep("Long", 4)
+)
+
+# Apply data transformations
+# Sex coded as string, needs to be factor
+new_races$sex <- as.factor(new_races$sex)
+# same thing for course
+new_races$course <- as.factor(new_races$course)
+# repeat for stroke
+new_races$stroke <- as.factor(new_races$stroke)
+
+# build event variable
+new_races$event <- paste0(new_races$dist, " m ", 
+                     new_races$stroke)
+
+# Clean up edge case of medley
+new_races[4,6] <- "100 m Individual Medley"
+new_races$event <- as.factor(new_races$event)
+
+# We're still adding a level not seen in training data, which means we cannot 
+# use event as predictor
+
+
+# New Object for clean data
+swim_test = new_races
+
+# Do Prediction
+predict(mod8, newdata = swim_test)
