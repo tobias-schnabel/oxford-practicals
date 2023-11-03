@@ -1,5 +1,7 @@
-library(tidverse, ggplot2)
-library(stargazer, kableExtra)
+library(tidverse)
+library(ggplot2)
+library(stargazer)
+library(kableExtra)
 
 data <- read.csv("swim.csv")
 
