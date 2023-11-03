@@ -7,6 +7,7 @@ library(MASS)
 data <- read.csv("swim.csv")
 
 ## Set Paths for tables and figures
+root = "/Users/ts/Git/Practicals"
 tab = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/Tables"
 fig = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/Figures"
 
@@ -139,7 +140,7 @@ model_list <- mget(grep("^mod[1-8]$", ls(), value = TRUE))
 #compare ICs:
 sapply(model_list, AIC)
 sapply(model_list, BIC)
-# model 6 is best in terms of AIC, mod7 in terms of BIC
+# model 6 is best in terms of AIC, model 7 in terms of BIC
 
 
 # Diagnostic plots for mod6
@@ -150,12 +151,10 @@ plot(mod6)
 par(mfrow = c(2, 2))  
 plot(mod7)    
 
-# SIde-by-side of baseline and mod7
+# SIide-by-side of baseline and mod7
 # Set up plotting parameters
 setwd(fig)
-# png("diag_s_by_s.png", width = 1000, height = 500, res = 500)
-# par(mfrow = c(8, 2), oma = c(1, 1, 1, 0), mar = c(4, 4, 2, 2) + 0.1)
-png("diag_s_by_s.png", width = 1400, height = 1800, res = 100)
+png("diag_s_by_s.png", width = 1400, height = 2800, res = 80)
 
 # Adjust layout and margins
 par(mfrow = c(8, 2), mar = c(2, 4, 2, 2) + 0.1, oma = c(0, 1, 0, 0), cex = 0.8)
@@ -170,5 +169,24 @@ plot(mod7, which = 3) #, main = "Model 7: Scale-Location")
 plot(mod1, which = 5) #, main = "Model 1: Residuals vs Leverage")
 plot(mod7, which = 5) #, main = "Model 7: Residuals vs Leverage")
 dev.off()
+setwd(root)
 
+# Prep reg table with robust SEs for better inference given Heterosked.
+library(sandwich)
+robustSE7 = vcovHC(mod7)
+robustSE1 = vcovHC(mod1)
 
+setwd(tab)
+stargazer(mod1, mod7, title="Regression Results", label="tab:results", 
+          se=list(sqrt(diag(robustSE1)), sqrt(diag(robustSE7))), 
+          type="latex", 
+          align=TRUE, 
+          column.labels=c("Initial Model", "Final Model"), 
+          dep.var.caption="", 
+          dep.var.labels.include = FALSE, 
+          no.space=TRUE, 
+          single.row=TRUE, 
+          header=FALSE, 
+          omit.stat=c("adj.rsq"), #, "f", "ser" 
+          digits=3)
+setwd(root)
