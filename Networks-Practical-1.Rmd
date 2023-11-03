@@ -9,7 +9,7 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 
 In this practical you will be manipulating network data using the igraph package in R. Call R and change directory to the folder where you store your networks files. Once in the R environment please type, to make sure the package is installed 
 ```{r}
-install.packages("igraph")
+# install.packages("igraph")
 ```
 
 The igraph package documentation can be found at https://cran.r-project.org/web/packages/igraph/igraph.pdf
@@ -162,30 +162,36 @@ Compare this to the local clustering coefficient:
 ```{r}
 transitivity(deggraph, type="local")
 ```
-Homework problem 
 
-Create a random graph G from a model of your choice, on 500 vertices, with parameter value of your choice, and calculate the global clustering coefficient. Repeat 100 times and make a histogram for the global clustering coefficients. You could use (and adapt) the R code 
+
+## Problem Sheet 2:
+2. 
+Create a random graph G from a model of your choice, on 500 vertices, with parameter value of your choice, and calculate the global clustering coefficient. Repeat 100 times and make a histogram for the global clustering coefficients. 
 
 ```{r}
-vt<-c(1:100)
-vd = c(1:100)
-vc = c(1:100)
+vt <- numeric(100)
+vd <- numeric(100)
+vc <- numeric(100)
+
+p = 0.002
+
 for ( i in 1:100)
-{g<- sample_gnp(500, 0.2)
+{g<- sample_gnp(500, p)
 vt[i]<-transitivity(g, type="global")
 vd[i] <- mean(degree(g))
 vc[i] <- no.clusters(g)
 }
-hist(vt, main = "global clustering coefficient", xlab = "global clustering coefficient")
+
+par(mfrow = c(1,3))
+hist(vt, main = paste("G( 500,",p,")"), xlab = "global clustering coefficient")
 abline(v = mean(vt), col = "red", lty = 2, lwd = 2)
 
-hist(vd, main = "Mean Degree")
+hist(vd, main = paste("G( 500,",p,")"), xlab = "Mean Degree")
 abline(v = mean(vd), col = "red", lty = 2, lwd = 2)
 
-hist(vc, main = "# Connected Components", xlab = "# conn. comp.")
+hist(vc, main = paste("G( 500,",p,")"), xlab = "# conn. comp.")
 abline(v = mean(vc), col = "red", lty = 2, lwd = 2)
 ```
-Repeat for the average degree and for the number of connected components. Vary the parameter value; try at least three different values. What do you find? 
 
 
 
