@@ -1,5 +1,6 @@
 library(tidyverse)
 library(ggplot2)
+library(gridExtra)
 library(stargazer)
 library(kableExtra)
 library(MASS)
@@ -149,6 +150,31 @@ point <- ggplot(swim, aes(x = stroke, y = time, color = sex, shape = factor(dist
   facet_wrap(~course) +
   theme_minimal() +
   labs(x = "Stroke", y = "Time (seconds)")
+
+violin1 <- ggplot(swim, aes(x = stroke, y = time, fill = sex)) +
+  geom_violin(position = position_dodge(0.8), width = 0.7) + 
+  theme_minimal() +
+  labs(x = "Stroke", y = "Time (seconds)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("F" = "pink", "M" = "lightblue"))
+
+
+violin2 <- ggplot(swim, aes(x = stroke, y = time, fill = course)) +
+  geom_violin(position = position_dodge(0.8), width = 0.7) + 
+  theme_minimal() +
+  labs(x = "Stroke", y = "Time (seconds)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("Long" = "lightgreen", "Short" = "cyan"))
+
+grid.arrange(violin1, violin2, ncol=2)
+
+violin3 <- ggplot(swim, aes(x = sex, y = time, fill = course)) +
+  geom_violin(position = position_dodge(0.8), width = 0.7) + 
+  theme_minimal() +
+  labs(x = "Stroke", y = "Time (seconds)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("Long" = "lightgreen", "Short" = "cyan"))
+
 
 
 ## 2 Model building: 
