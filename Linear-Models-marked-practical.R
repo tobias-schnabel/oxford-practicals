@@ -176,7 +176,6 @@ violin3 <- ggplot(swim, aes(x = sex, y = time, fill = course)) +
   scale_fill_manual(values = c("Long" = "lightgreen", "Short" = "cyan"))
 
 
-
 ## 2 Model building: 
 
 # establish baseline
@@ -207,37 +206,33 @@ step_bic <- step(mod1, direction = "backward", k = log(nrow(swim)))
 # BIC also deteriorates when we drop predictors
 
 # Interaction terms
+# maximal interactions:
+mod2 <- lm(time ~ dist*course + stroke*sex, data = swim)
+
 # based on plot "point", Different strokes have varying times across both short 
 # and long distances.The time differences between strokes in short vs. 
 # long distances are not consistent. For instance, the time gap for Butterfly 
 # between short and long distances is more pronounced than for Backstroke.
 mod3 <- lm(time ~ stroke*dist + sex + course, data = swim)
-summary(mod3)
 
 # Males and females have different times for the same strokes. For example, in 
 # Freestyle and Medley (both short and long), females tend to have slightly 
 # longer times than males.
-mod4 <- lm(time ~ sex*stroke + course + event, data = swim)
-summary(mod4) # some multicoll but better fit
+mod4 <- lm(time ~ sex*stroke + course, data = swim)
 
 # For certain strokes, the time differences between males and females appear 
 # more pronounced in long distances compared to short distances.
-mod5 <- lm(time ~ -1 + sex*dist + course + event, data = swim)
-summary(mod5) # dropping intercept improves fit
+mod5 <- lm(time ~ -1 + sex*dist + course + stroke, data = swim)
 
 # checking for  nuanced differences in performance across gender, stroke, 
 #and distance combine:
-mod6 <- lm(time ~ -1 + sex*dist*stroke + course + event, data = swim)
-summary(mod6)
+mod6 <- lm(time ~ -1 + sex*dist*stroke + course, data = swim)
 
-mod7 <- lm(time ~ -1 + event*sex*course, data = swim)
-summary(mod7)
+mod7 <- lm(time ~ -1 + sex*course, data = swim)
 
 mod8 <- lm(time ~ -1 + sex*stroke + dist + course, data = swim)
-summary(mod8)
 
 mod9 <- lm(time ~ sex*course + dist*stroke, data = swim)
-summary(mod9)
 
 # get all models into list
 model_list <- mget(grep("^mod[1-9]$", ls(), value = TRUE))
@@ -245,7 +240,9 @@ model_list <- mget(grep("^mod[1-9]$", ls(), value = TRUE))
 #compare ICs:
 sapply(model_list, AIC)
 sapply(model_list, BIC)
-# model 6 is best in terms of AIC, model 7 in terms of BIC
+# model 6 is best in terms of AIC and BIC and has
+# absurd R2 but obviously not interpretable
+
 
 # However, can't use event as factor because interacting it destroys df and 
 # interpretability
