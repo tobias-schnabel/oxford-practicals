@@ -222,26 +222,33 @@ mod4 <- lm(time ~ sex*stroke + course, data = swim)
 
 # For certain strokes, the time differences between males and females appear 
 # more pronounced in long distances compared to short distances.
-mod5 <- lm(time ~ -1 + sex*dist + course + stroke, data = swim)
+mod5 <- lm(time ~ sex*dist + course + stroke, data = swim)
 
-# checking for  nuanced differences in performance across gender, stroke, 
-#and distance combine:
-mod6 <- lm(time ~ -1 + sex*dist*stroke + course, data = swim)
+# create new variable that captures lengths swum
+swim$lengths <- ifelse(swim$course == "Short", 
+                       as.numeric(as.character(swim$dist)) / 25, 
+                       as.numeric(as.character(swim$dist)) / 50)
 
-mod7 <- lm(time ~ -1 + sex*course, data = swim)
-
-mod8 <- lm(time ~ -1 + sex*stroke + dist + course, data = swim)
-
-mod9 <- lm(time ~ sex*course + dist*stroke, data = swim)
-
+mod6 <- lm(time ~ dist * stroke + lengths + sex, data = swim)
+mod7 <- lm(time ~ dist * stroke + lengths*sex, data = swim)
+mod8 <- lm(time ~ sex*course + dist*stroke, data = swim)
+mod9 <- lm(time ~ dist * stroke + log(lengths) + sex, data  = swim)
 # get all models into list
 model_list <- mget(grep("^mod[1-9]$", ls(), value = TRUE))
 
 #compare ICs:
-sapply(model_list, AIC)
-sapply(model_list, BIC)
-# model 6 is best in terms of AIC and BIC and has
-# absurd R2 but obviously not interpretable
+aic <- round(sapply(model_list, AIC), 2)
+bic <- round(sapply(model_list, BIC), 2)
+which(aic ==min(aic))
+which(bic ==min(bic))
+# model 7 is best in terms of AIC and BIC
+# get number of coefficients
+p <- sapply(model_list, function(mod) length(coef(mod)))
+
+# Make small table
+icmat = rbind(p, aic, bic)
+colnames(icmat) <- paste0("Model ", 1:9)
+icmat
 
 
 # However, can't use event as factor because interacting it destroys df and 
