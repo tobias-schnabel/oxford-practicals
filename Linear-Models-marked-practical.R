@@ -1,16 +1,18 @@
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
+library(patchwork) # to combine plots
 library(stargazer)
 library(kableExtra)
-library(MASS)
-
-
+library(sandwich) # for robust Standard Errors
+library(MASS) # for stepwise AIC and BIC selection
+library(ggfortify)
 
 ## Set Paths for tables and figures
 root = "/Users/ts/Git/Practicals"
-tab = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/Tables"
-fig = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/Practical Template/Figures"
+tab = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/LM Practicals/Tables"
+fig = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/LM Practicals/Figures"
+code = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/LM Practicals/Code"
 
 if (getwd() != root) {
   setwd(root)
@@ -36,9 +38,7 @@ data <- read.csv("swim.csv")
 # model you obtain.
 # You are also asked, using the same model, to predict times for four additional races.
 
-# 1. Perform an exploratory analysis of the data and summarise your ﬁndings. 
-# You may wish to consider some numerical summaries as well as some exploratory plots.
-
+## EDA
 head(data)
 str(data)
 
@@ -108,47 +108,22 @@ length(levels(data$event)) # 16 observed combinations
 # New Object for clean data
 swim = data[, -1] # drop event for reasons stated above
 
-# Dist is technically numerical but practically has
-length(unique(swim$dist)) # 4 distinct levels
-# A classical ceteris paribus interpretation also does not really make sense
-# as race distances are fixed and "increasing by 1 unit" does not have a sensible
-# interpretation
 
-# Check whether it makes a difference for linear modelling
-swim$dist <- as.factor(swim$dist)
-mod0d <- lm(time ~ dist*stroke + sex + course , data = data[, -1])
-mod0e <- lm(time ~ dist*stroke + sex + course , data = swim)
-stargazer(mod0d, mod0e, type = "text",
-          single.row = T,
-          omit = ".*",
-          title = "Full Model with 'dist' cast as",
-          column.labels = c("Numeric", "Factor")) 
-
-# it does indeed make a (small) difference, factor takes up more df, but negligible
-
-# Summary Table
-swim %>%
-  group_by(sex, course, stroke) %>%
-  summarize(
-    Avg_Time = mean(time, na.rm = TRUE),
-    SD_Time = sd(time, na.rm = TRUE),
-    .groups = 'drop'
-  )
-
-stargazer(swim, type = "text")
-
+## Plots
 hist <- ggplot(swim, aes(x = time)) + 
   geom_histogram(binwidth = 1) +
   facet_wrap(~stroke)
 
 box <- ggplot(swim, aes(x = stroke, y = time, fill = sex)) + 
   geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   facet_wrap(~course)
 
 point <- ggplot(swim, aes(x = stroke, y = time, color = sex, shape = factor(dist))) +
   geom_point(position = position_dodge(0.8)) +
   facet_wrap(~course) +
   theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(x = "Stroke", y = "Time (seconds)")
 
 violin1 <- ggplot(swim, aes(x = stroke, y = time, fill = sex)) +
@@ -166,29 +141,55 @@ violin2 <- ggplot(swim, aes(x = stroke, y = time, fill = course)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   scale_fill_manual(values = c("Long" = "lightgreen", "Short" = "cyan"))
 
-grid.arrange(violin1, violin2, ncol=2)
+violins = grid.arrange(violin1, violin2, ncol=2)
 
 violin3 <- ggplot(swim, aes(x = sex, y = time, fill = course)) +
   geom_violin(position = position_dodge(0.8), width = 0.7) + 
   theme_minimal() +
   labs(x = "Stroke", y = "Time (seconds)") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   scale_fill_manual(values = c("Long" = "lightgreen", "Short" = "cyan"))
 
+# Collect in list
+plotlist <- list(hist, box, point, violins, violin3)
+
+# Dist is technically numerical but practically has
+length(unique(swim$dist)) # 4 distinct levels
+# A classical ceteris paribus interpretation also does not really make sense
+# as race distances are fixed and "increasing by 1 unit" does not have a sensible
+# interpretation
+
+# Check whether it makes a difference for linear modelling
+swim$dist <- as.factor(swim$dist)
+mod0d <- lm(time ~ dist*stroke + sex + course , data = data[, -1])
+mod0e <- lm(time ~ dist*stroke + sex + course , data = swim)
+mod0d$AIC <- AIC(mod0d)
+mod0e$AIC <- AIC(mod0e)
+stargazer(mod0d, mod0e, type = "text",
+          single.row = T,
+          omit = ".*",
+          title = "Full Model with 'dist' cast as",
+          column.labels = c("Numeric", "Factor"),
+          keep.stat = c("n", "rsq", "adj.rsq", "ser","f",  "aic")) 
+
+# it does indeed make a (small) difference, factor takes up more df, but negligible
 
 ## 2 Model building: 
 
-# establish baseline
-mod1a <- lm(time ~ dist*stroke + sex + course , data = swim)
-mod1b <- lm(time ~ dist + stroke + sex + course , data = swim)
+# establishing baseline
+mod1 <- lm(time ~ dist*stroke + sex + course , data = swim)
+mod2 <- lm(time ~ dist + stroke + sex + course , data = swim)
 
-stargazer(mod1a, mod1b, type = "text",
+mod1$AIC <- AIC(mod1)
+mod2$AIC <- AIC(mod2)
+
+stargazer(mod1, mod2, type = "text",
           single.row = T,
           omit = ".*",
           title = "Baseline: 'dist' and 'factor' included as",
-          column.labels = c("Interaction", "Additive")) 
+          column.labels = c("Interaction", "Additive"),
+          keep.stat = c("n", "rsq", "adj.rsq", "ser","f",  "aic")) 
 # Interaction better across the board
-mod1 <- mod1a # set as baseline
+
 
 # Diagnostic plots for mod1
 par(mfrow = c(2, 2))  
@@ -206,33 +207,24 @@ step_bic <- step(mod1, direction = "backward", k = log(nrow(swim)))
 # BIC also deteriorates when we drop predictors
 
 # Interaction terms
-# maximal interactions:
-mod2 <- lm(time ~ dist*course + stroke*sex, data = swim)
-
-# based on plot "point", Different strokes have varying times across both short 
-# and long distances.The time differences between strokes in short vs. 
-# long distances are not consistent. For instance, the time gap for Butterfly 
-# between short and long distances is more pronounced than for Backstroke.
-mod3 <- lm(time ~ stroke*dist + sex + course, data = swim)
 
 # Males and females have different times for the same strokes. For example, in 
 # Freestyle and Medley (both short and long), females tend to have slightly 
 # longer times than males.
-mod4 <- lm(time ~ sex*stroke + course, data = swim)
+mod3 <- lm(time ~ sex*stroke + dist + course, data = swim)
 
 # For certain strokes, the time differences between males and females appear 
 # more pronounced in long distances compared to short distances.
-mod5 <- lm(time ~ sex*dist + course + stroke, data = swim)
+mod4 <- lm(time ~ sex*dist + course + stroke, data = swim)
 
 # create new variable that captures lengths swum
 swim$lengths <- ifelse(swim$course == "Short", 
                        as.numeric(as.character(swim$dist)) / 25, 
                        as.numeric(as.character(swim$dist)) / 50)
 
-mod6 <- lm(time ~ dist * stroke + lengths + sex, data = swim)
-mod7 <- lm(time ~ dist * stroke + lengths*sex, data = swim)
-mod8 <- lm(time ~ sex*course + dist*stroke, data = swim)
-mod9 <- lm(time ~ dist * stroke + log(lengths) + sex, data  = swim)
+mod5 <- lm(time ~ sex * stroke + lengths, data = swim)
+mod6 <- lm(time ~ dist * stroke + lengths*sex, data = swim)
+
 # get all models into list
 model_list <- mget(grep("^mod[1-9]$", ls(), value = TRUE))
 
@@ -241,77 +233,39 @@ aic <- round(sapply(model_list, AIC), 2)
 bic <- round(sapply(model_list, BIC), 2)
 which(aic ==min(aic))
 which(bic ==min(bic))
-# model 7 is best in terms of AIC and BIC
+# model 6 is best in terms of AIC and BIC
 # get number of coefficients
 p <- sapply(model_list, function(mod) length(coef(mod)))
 
 # Make small table
 icmat = rbind(p, aic, bic)
-colnames(icmat) <- paste0("Model ", 1:9)
-icmat
+colnames(icmat) <- paste0("Model ", 1:6)
+icmat[1, ] <- as.integer(icmat[1, ])
+ictable <- kable(icmat, "latex", booktabs = TRUE, digits = 2) %>%
+  row_spec(0, bold = TRUE) # Make the header row bold
+# kable_styling(latex_options = c("striped", "scale_down")) %>%
+
 
 
 # However, can't use event as factor because interacting it destroys df and 
 # interpretability
 
 
-# Diagnostic plots for mod6
-par(mfrow = c(2, 2))  
-plot(mod6)             
+# Side-by-side of mod4 and mod6 diagnostic plots
+diag1_1 <- autoplot(mod1, which = 1)
+diag1_2 <- autoplot(mod1, which = 2)
+diag1_3 <- autoplot(mod1, which = 5)
+diag1_4 <- autoplot(mod1, which = 6)
 
-# Diagnostic plots for mod7
-par(mfrow = c(2, 2))  
-plot(mod7)    
+diag4_1 <- autoplot(mod4, which = 1)
+diag4_2 <- autoplot(mod4, which = 2)
+diag4_3 <- autoplot(mod4, which = 5)
+diag4_4 <- autoplot(mod4, which = 6)
 
-
-# Prediction plot
-coef_plot <- ggplot(coef(step_model), aes(x = names(coef(step_model)), y = coef(step_model))) +
-  geom_point() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-# Side-by-side of baseline and mod7
-# Set up plotting parameters
-setwd(fig)
-png("diag_s_by_s.png", width = 1400, height = 2800, res = 80)
-
-# Adjust layout and margins
-par(mfrow = c(8, 2), mar = c(2, 4, 2, 2) + 0.1, oma = c(0, 1, 0, 0), cex = 0.8)
-
-# Plot diagnostics for mod1 and mod7 side by side
-plot(mod1, which = 1) # main = "Model 1: Residuals vs Fitted")
-plot(mod7, which = 1) #, main = "Model 7: Residuals vs Fitted")
-plot(mod1, which = 2) #, main = "Model 1: Normal Q-Q")
-plot(mod7, which = 2) #, main = "Model 7: Normal Q-Q")
-plot(mod1, which = 3) #, main = "Model 1: Scale-Location")
-plot(mod7, which = 3) #, main = "Model 7: Scale-Location")
-plot(mod1, which = 5) #, main = "Model 1: Residuals vs Leverage")
-plot(mod7, which = 5) #, main = "Model 7: Residuals vs Leverage")
-dev.off()
-
-
-
-setwd(root)
-
-# Prep reg table with robust SEs for better inference given Heterosked.
-library(sandwich)
-robustSE7 = vcovHC(mod7)
-robustSE1 = vcovHC(mod1)
-
-setwd(tab)
-stargazer(mod1, mod7, title="Regression Results", label="tab:results", 
-          se=list(sqrt(diag(robustSE1)), sqrt(diag(robustSE7))), 
-          type="latex", 
-          align=TRUE, 
-          column.labels=c("Initial Model", "Final Model"), 
-          dep.var.caption="", 
-          dep.var.labels.include = FALSE, 
-          no.space=TRUE, 
-          single.row=TRUE, 
-          header=FALSE, 
-          digits=3)
-          # omit.stat=c("adj.rsq"), #, "f", "ser" 
-setwd(root)
-
+# Arrange side by side
+diag_plot <- diag1_1 + diag4_1 + diag1_2 + diag4_2 +
+  diag1_3 + diag4_3 + diag1_4 + diag4_4 +
+  plot_layout(ncol = 2, nrow = 4)
 
 # Data for prediction intervals
 new_races <- data.frame(
@@ -329,9 +283,106 @@ new_races$sex <- as.factor(new_races$sex)
 new_races$course <- as.factor(new_races$course)
 # repeat for stroke
 new_races$stroke <- as.factor(new_races$stroke)
+# repeat for dist
+new_races$dist <- as.factor(new_races$dist)
 
 # New Object for clean data
 swim_test = new_races
 
 # Do Prediction
-predict(mod8, newdata = swim_test)
+pred_df <- data.frame(
+  predict(mod4, newdata = swim_test, interval = "prediction")
+) %>% mutate(across(everything(), ~ round(., 2)))
+
+
+## Export tables
+setwd(tab)
+save_kable(ictable, file = "ictable.tex")
+
+kable(pred_df, "latex", booktabs = TRUE, caption = "Prediction Intervals",
+      col.names = c("Prediction", "Lower Bound", "Upper Bound")) %>%
+  column_spec(1, bold = TRUE) %>%  
+  save_kable(file = "predictions.tex")
+
+stargazer(mod0a, mod0b, mod0c, out = "event.tex",
+          single.row = T,
+          omit = ".*",
+          title = "Inclusion of 'event' variable",
+          column.labels = c("Without 'event'", "With 'event'",
+                            "with stroke * dist")) 
+
+stargazer(mod0d, mod0e, out = "dist.tex",
+          single.row = T,
+          omit = ".*",
+          title = "Full Model with 'dist' cast as",
+          column.labels = c("Numeric", "Factor"),
+          keep.stat = c("n", "rsq", "adj.rsq", "ser","f",  "aic")) 
+
+stargazer(mod1, mod2, out = "dist_stroke.tex",
+          single.row = T,
+          omit = ".*",
+          title = "Baseline: 'dist' and 'stroke' included as",
+          column.labels = c("Interaction", "Additive"),
+          keep.stat = c("n", "rsq", "adj.rsq", "ser","f",  "aic"))
+
+# Prep reg table with robust SEs for better inference given Heterosked.
+robustSE6 = vcovHC(mod6)
+robustSE4 = vcovHC(mod4)
+mod6$AIC <- AIC(mod6)
+mod4$AIC <- AIC(mod4)
+
+stargazer(mod4, mod6, title="Regression Results", 
+          se=list(sqrt(diag(robustSE4)), sqrt(diag(robustSE6))), 
+          type="latex", 
+          align=TRUE, 
+          out = "regtable.tex",
+          column.labels=c("Model 4", "Model 6"), 
+          dep.var.caption="", 
+          dep.var.labels.include = FALSE, 
+          no.space=TRUE, 
+          single.row=TRUE, 
+          header=FALSE, 
+          digits=3,
+          keep.stat = c("n", "rsq", "adj.rsq", "ser","f",  "aic"))
+
+# just model 4
+stargazer(mod4, title="Regression Results", 
+          se=list(sqrt(diag(robustSE4))), 
+          type="latex", 
+          align=TRUE, 
+          out = "interpretation.tex",
+          column.labels=c("Model 4"), 
+          dep.var.caption="", 
+          dep.var.labels.include = FALSE, 
+          no.space=TRUE, 
+          single.row=TRUE, 
+          header=FALSE, 
+          digits=3,
+          keep.stat = c("n", "rsq", "adj.rsq", "ser","f",  "aic"))
+# omit.stat=c("adj.rsq"), #, "f", "ser" 
+setwd(root)
+
+
+## Export figures
+setwd(fig)
+# export side-by-side diagnostics plos
+png("diagnostics.png", width = 4000, height = 4000, res = 200)
+print(diag_plot)
+dev.off()
+
+# export ggplots
+# Loop through the list of plots
+for (i in seq_along(plotlist)) {
+  if (!is.null(plotlist[[i]])) { # Check if the plot is not null
+    # Construct the filename using the index
+    filename <- paste0("plot", i, ".png")
+    # Save the plot to disk
+    ggsave(plot = plotlist[[i]], filename = filename)
+  }
+}
+
+setwd(code)
+file.copy(from = "/Users/ts/Git/Practicals/Linear-Models-marked-practical.R",
+          to = "/Users/ts/Library/CloudStorage/Dropbox/Apps/Overleaf/LM Practicals/Code",
+          overwrite = T)
+setwd(root)
