@@ -1,0 +1,202 @@
+\documentclass{article}
+\usepackage{hyperref}
+\newcommand{\code}[1]{\texttt{#1}}
+\author{Robert Davies}
+\title{A report on movies}
+
+\begin{document}
+
+\maketitle
+
+
+<<echo = FALSE, eval = TRUE, warning = FALSE, message = FALSE>>=
+
+options(scipen = 999)
+library("tidyverse")
+library("knitr")
+
+url <- paste0(
+    "https://raw.githubusercontent.com/hadley/", 
+    "ggplot2movies/master/data-raw/movies.csv"
+)
+movies <- read_csv(url)
+
+movies_description <- read_csv("movies_description.csv", progress = FALSE)
+## as.data.frame(movies_description)
+
+@
+
+
+
+
+\section{Introduction}
+
+In this report, we're going to describe movie data from \url{\Sexpr{url}}. 
+
+First, we downloaded this data and loaded into R. This dataset has \Sexpr{nrow(movies)} rows and \Sexpr{ncol(movies)} columns. 
+
+We were able to download a very handy description of the columns, which is as follows. We had to modify this file slightly as it otherwise printed out a very wide column entry.
+
+\begin{center}
+<<echo = FALSE>>=
+
+md <- movies_description
+md[9, 1] <- "action, ..."
+kable(md)
+
+@
+\end{center}
+
+
+
+It is interesting to look at the counts of the number of movies that have each of the different ratings. Most ratings are not available, but of the movies that are rated, most are rated R!
+
+\begin{center}
+<<echo = FALSE, message = FALSE>>=
+movies %>% group_by(mpaa) %>% summarize(count = length(mpaa)) %>% kable
+@ 
+\end{center}
+
+
+
+\section{Relationship between budget and ratings}
+
+In this question, we were interested in looking at the relationship between budget and rating. First, let's visualize the data, by looking at histograms of ratings and budget, shown below. We see that ratings are approximately normally distributed with a mean of around 6, while movie budgets are highly concentrated at the lower end, with approximately an exponential distribution, with only \Sexpr{sum(movies %>% pull("budget") >= 1e8, na.rm = TRUE)} movies having a budget over 100 million dollars
+
+<<echo = FALSE, message = FALSE, warning = FALSE, fig.show="hold", out.width="50%">>=
+movies %>% 
+    ggplot(aes(x = rating)) + 
+    geom_histogram()
+
+movies %>% 
+    ggplot(aes(x = budget)) + 
+    geom_histogram()
+
+@ 
+
+Now we want to look at this relationship in a bit more detail. Because budget is so left-skewed, it is useful to log-transform the data. After doing so, we can look at the relationship between budget and ratings. There doesn't appear to be much of a relationship, but let's perform a linear regression to be sure.
+
+<<echo = FALSE, message = FALSE, warning = FALSE>>=
+
+movies %>% 
+    ggplot(aes(x = budget, y = rating)) +
+    geom_point() + 
+    scale_x_continuous(trans='log10')
+
+@ 
+
+Here is how we performed the regression. It is useful to include the code output in the document, because this is easy for other statisticians to interpret! But we'll hide the \code{kable} command to summarize the results in a table, because that's boring.
+
+<<echo = TRUE, message = FALSE>>=
+summ <- lm(rating ~ budget, data = movies)
+@ 
+<<echo = FALSE, message = FALSE>>=
+kable(coefficients(summary(summ)))
+
+@   
+
+There is no (linear) relationship between budget and rating. Interesting! 
+
+
+
+\section{Bespoke querying of the data}
+
+Let's take a closer look at the dataset. We can see, for instance, that the two movies with the highest budget were as follows. 
+
+<<echo = FALSE, message = FALSE>>=
+
+movies %>% 
+    arrange(desc(budget)) %>% 
+    head(n = 2) %>% 
+    select(title, budget) %>% kable()
+
+@ 
+
+And if we restrict ourselves to the 90's, a great decade for movies, we can see that the three movies with the largest budget from the 1990's were as follows
+
+<<echo = FALSE, message = FALSE>>=
+
+movies %>% 
+    filter(year >= 1990 & year <= 1999) %>% 
+    arrange(desc(budget)) %>% 
+    head(n = 3) %>% 
+    select(title, budget, year) %>% kable()
+
+@ 
+
+
+<<echo = FALSE, message = FALSE>>=
+
+most_frequent_movie <- movies %>% 
+    group_by(title) %>% 
+    summarize(n = length(title)) %>% 
+    arrange(desc(n)) %>% 
+    head(n = 1)
+
+@ 
+
+Hmm maybe there were some sub-par movies from the 90's. Finally, we took a look at which movies were represented most in the dataset. We saw that the most frequent movie was \Sexpr{unlist(most_frequent_movie)["title"]}, which was represented \Sexpr{unlist(most_frequent_movie)["n"]} times. More interrogation of this revealed that these entries represented different versions of the movie, done over different years.
+
+<<echo = FALSE, message = FALSE>>=
+
+movies %>% filter(title == "Alice in Wonderland") %>% select("title", "year") %>% kable
+
+
+@ 
+
+
+
+
+\section{Relationship between budget and movie type}
+
+<<echo = FALSE, message = FALSE>>=
+
+how_many_movies_one_type <- movies %>% 
+    mutate(
+        category_count = 
+            Action + Animation + Comedy + Drama + 
+            Documentary + Romance + Short
+    ) %>% 
+    filter(category_count == 1) %>% 
+    nrow
+
+@ 
+
+Here, we looked at the relationship between budget and movie type. To simplify things, we looked at \Sexpr{how_many_movies_one_type} movies that uniquely only had a single movie type, like action, or comedy. Next, we summarized the average budget per category. From this we see that some movies, like movies of the "Short" class, are comparatively inexpensive.
+
+<<echo = FALSE, message = FALSE>>=
+
+budget_by_category <- movies %>% 
+    mutate(
+        category_count = 
+            Action + Animation + Comedy + Drama + 
+            Documentary + Romance + Short
+    ) %>% 
+    filter(category_count == 1) %>% 
+    gather(
+        key = category, value = category_index, 
+        Action, Animation, Comedy, Drama, Documentary, Romance, Short
+    ) %>% 
+    filter(category_index == 1) %>% 
+    group_by(category) %>% 
+    summarise(mean = mean(budget, na.rm = TRUE), n = length(budget)) 
+
+budget_by_category %>% kable
+@ 
+
+Ultimately, we decided a bar plot was a better way to look at this. It really shows off that Documentary and Short movies are comparatively inexpensive, on average, compared to Action and Animation movies.
+
+<<echo = FALSE, message = FALSE>>=
+budget_by_category %>% 
+    ggplot(aes(x=category, y=mean)) +
+  geom_bar(stat="identity")
+
+
+@ 
+
+
+\section{Conclusion}
+
+knitr and latex are a great way to make research reproducible, and to make literate programming examples!
+
+\end{document}

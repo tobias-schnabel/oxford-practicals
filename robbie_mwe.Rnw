@@ -1,0 +1,7 @@
+\documentclass{article}
+\begin{document}
+Here is a minimal working example
+<<>>=
+1 + 1
+@
+\end{document}
