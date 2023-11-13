@@ -9,24 +9,132 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(igraph)
 data <- read.graph("http://www.stats.ox.ac.uk/~reinert/dtc/YeastL.net", format = "pajek")
+yeast <- simplify(data, remove.multiple = T, remove.loops = T)
 ```
 
-## R Markdown
+# Find the nearest neighbours of Vertex 1, create vector of neighbors which contain Vertex 1
+```{r}
+nb1 <- neighbors(yeast, V(yeast)[1])
+nb <- c(nb1, V(yeast)[1])
+sub <- graph.neighborhood(yeast, 1, nodes=V(yeast)[1])
+plot(sub[[1]])
+```
+Compare ego-networks for two verts with same degree:
+```{r}
+degree(yeast, V(yeast)[1983])
+degree(yeast, V(yeast)[1554])
+```
+Get ego networks and plot:
+```{r}
+Sub1983 <- graph.neighborhood(yeast, 1, nodes=V(yeast)[1983]) 
+Sub1554 <- graph.neighborhood(yeast, 1, nodes=V(yeast)[1554])
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+plot(Sub1983[[1]], layout= layout_nicely, vertex.label.cex=0.005)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+plot(Sub1554[[1]], layout= layout_nicely, vertex.label.cex=0.005)
+```
+We can repeat the procedure for second-neighbours of Vertex 1 
 
-```{r cars}
-summary(cars)
+```{r}
+Sub2<-graph.neighborhood(yeast, 2, nodes=V(yeast)[1]) 
+plot(Sub2[[1]] , layout= layout_nicely, vertex.label.cex=0.05)
+
 ```
 
-## Including Plots
+Look at the 2-hop ego network for Vertex 1554:
 
-You can also embed plots, for example:
+```{r}
+Sub21554<-graph.neighborhood(yeast, 2, nodes=V(yeast)[1554]) 
+plot(Sub21554 [[1]], layout= layout_nicely, vertex.size=0.5, vertex.label.cex=0.005)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```
+What happens when you increase the hop size further?
+
+Try 3-hop:
+```{r}
+Sub21554<-graph.neighborhood(yeast, 3, nodes=V(yeast)[1554]) 
+plot(Sub21554 [[1]], layout= layout_nicely, vertex.size=0.5, vertex.label.cex=0.005)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## 2 Subsampling 
+
+We may like to look at some samples from a network in more detail. 
+
+To sample without replacement, first draw a sample from the vertex set:
+```{r}
+V<- V(yeast) 
+Vs<- sample(V, 10, replace = FALSE, prob = NULL)
+```
+Now obtain the induced subgraph for this sample and plot it. 
+```{r}
+Vind<-induced.subgraph(yeast, Vs, impl=c("auto"))
+plot(Vind, layout= layout_nicely, vertex.label.cex=0.05)
+```
+How many edges does the induced subgraph have? Find a suitable igraph command.
+```{r}
+length(E(Vind))
+```
+
+Obtain a 1-hop snowball sample with Vs as set of seed nodes: 
+
+```{r}
+snow<-make_ego_graph(
+  yeast,
+  order = 1,
+  nodes = Vs
+)
+```
+
+This results in a collection of ego-networks. To convert this collection into a single network you can use 
+```{r}
+snow_list_df <- lapply(snow, as_data_frame)
+snow_df <- do.call(rbind, snow_list_df)
+snowball <- graph_from_data_frame(snow_df , directed = FALSE)
+```
+
+Simpify the snowball sample and plot it. How many edges does your snowball sample have? 
+
+```{r}
+snowball<-simplify(snowball)
+plot(snowball, layout= layout_nicely, vertex.label="", vertex.size=10)
+
+```
+
+
+## 3 Monte Carlo test 
+
+Suppose that we would like to base our test on the statistic T0. We only need to be able to simulate a random sample T01, T02, …, T0n from the distribution, call it F0, determined by the null hypothesis. We assume that F0 is continuous, and, without loss of generality, that we reject the null hypothesis H0 for large values of T0. Then, provided that α= m/(n+1) is rational, we can proceed as follows.
+
+1.	Observe the actual value t* for T0, calculated from the data
+2.	Simulate a random sample of size n from F0
+3.	Order the set of observed values { t*, t01, t02, …, t0n }
+4.	Reject H0 if the rank of t* in this set (in decreasing order) is less or equal to m. 
+
+The basis of this test is that, under H0, the random variable T* has the same distribution as the remainder of the set and so, by symmetry, 
+
+P( t* is among the largest m value) =m/(n+1).
+
+Use a network statistic to compare different network models. Here are some questions to consider. 
+
+1.	What is the effect of choosing different parameters in the models? 
+2.	How do the vertex degree distributions differ in the different models? 
+3.	How does the global clustering coefficient vary across the models? 
+
+Choose one of these questions and start your own examination. Pick at least 2 different type of models and 3 different parameter choices. Test whether the statistics are statistically different in the different models using a Monte Carlo test. Be prepared to present your results in 2 min in the problem session. Below is a sample Monte Carlo test code which you can adapt to your problem. 
+
+
+
+```{r}
+p<-ecount(yeast)*2/(vcount(yeast)*(vcount(yeast) - 1))
+
+w<-c(1:49)
+for(i in (1:49)){
+N<-sample_gnp(vcount(yeast), p) 
+w[i]<-transitivity(N)
+}
+
+v<-c(w,transitivity(yeast))
+ sort(v)
+match(transitivity(yeast), sort(v))
+```
