@@ -1,0 +1,33 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[margin=3cm]{geometry}
+\usepackage{hyperref}
+\usepackage{enumerate}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\author{P151}
+\title{MSc Statistical Programming 2023 Assessed Practical Assignment}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+\maketitle
+
+\subsection*{British House Prices}
+
+<<setup, echo = FALSE>>=
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(kableExtra))
+
+# Load first data set
+houseprices_raw <- read.csv("Average-prices-2023-07.csv")
+# Load second data set
+inflation_raw <- read.csv("series-181023_cumulative.csv")
+@
+
+
+
+
+\end{document}
