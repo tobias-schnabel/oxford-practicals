@@ -3,29 +3,54 @@
 \usepackage{hyperref}
 \usepackage{enumerate}
 \newcommand{\code}[1]{\texttt{#1}}
-
+% !Rnw weave = knitr
 \author{P151}
 \title{MSc Statistical Programming 2023 Assessed Practical Assignment}
 
 \begin{document}
-\SweaveOpts{concordance=TRUE}
+
 
 \maketitle
 
 \subsection*{British House Prices}
 
-<<setup, echo = FALSE>>=
+<<setup, echo = F>>=
+
 suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggthemes))
 suppressPackageStartupMessages(library(kableExtra))
 
 # Load first data set
-houseprices_raw <- read.csv("Average-prices-2023-07.csv")
+houseprices_raw <- suppressMessages(read_csv("Average-prices-2023-07.csv"))
 # Load second data set
-inflation_raw <- read.csv("series-181023_cumulative.csv")
+inflation_raw <- suppressMessages(read_csv("series-181023_cumulative.csv"))
+
 @
+
+\begin{figure}[h!]
+\centering
+\caption{Average House Price in England Over Time}
+<<Plot mean House Price in England, echo = F,  fig = T,fig.width=10, fig.height=2, out.width='\\textwidth'>>=
+
+# Filter the data for the England region
+england_data <- houseprices_raw %>% 
+  filter(Region_Name == "England")
+
+# Plot
+ggplot(england_data, aes(x = Date, y = Average_Price)) +
+  geom_line(color = tableau_color_pal()(1)) + 
+  scale_y_continuous(labels = scales::comma_format(scale = 1/1000, suffix = "K")) + # This will format the y labels with a "K" for thousands
+  theme_minimal() +
+  labs(
+    x = "Date",
+    y = "Average Price (in Thousands)"
+  )
+@
+\end{figure}
 
 
 
