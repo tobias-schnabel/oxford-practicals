@@ -23,7 +23,8 @@ suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ggthemes))
-suppressPackageStartupMessages(library(kableExtra))
+# suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(xtable))
 
 # Load first data set
 houseprices_raw <- suppressMessages(read_csv("Average-prices-2023-07.csv"))
@@ -89,53 +90,51 @@ ggplot(final_data) +
 @
 \end{figure}
 
-<<Compare England and Oxford House Prices, echo=F>>=
-# england_regions <- houseprices_raw %>%
-#   filter(substring(Area_Code, 1, 1) == "E" & Region_Name != "England") %>%
-#   mutate(Month = floor_date(Date, "month"))
-# 
-# ## Calculate median ratios
-# # First, summarize the England data
-# england_avg <- england_data %>%
-#   mutate(Month = floor_date(Date, "month")) %>%
-#   group_by(Month) %>%
-#   summarize(England_Avg_Price = mean(Average_Price), .groups = 'drop')
-# 
-# # join and calculate ratios
-# median_ratios <- england_regions %>%
-#   left_join(england_avg, by = "Month") %>%
-#   mutate(Ratio = Average_Price / England_Avg_Price) %>%
-#   group_by(Region_Name) %>%
-#   summarize(Median_Ratio = median(Ratio, na.rm = TRUE), .groups = 'drop')
-# 
-# # Select top 10 regions
-# top_regions <- median_ratios %>%
-#   arrange(desc(Median_Ratio)) %>%
-#   slice(1:10)
-# 
-# # Calculate initial and final prices, and percentage increase
-# price_data <- england_regions %>%
-#   filter(Region_Name %in% top_regions$Region_Name) %>%
-#   group_by(Region_Name) %>%
-#   summarize(Initial_Price = first(Average_Price),
-#             Final_Price = last(Average_Price),
-#             Percentage_Increase = (Final_Price - Initial_Price) / Initial_Price * 100,
-#             .groups = 'drop')
-# 
-# # Extract unique Oxford region names
-# oxford_regions <- unique(oxford_data$Region_Name)
-# 
-# # Create the table
-# final_table <- left_join(top_regions, price_data, by = "Region_Name") %>% 
-#   mutate(Is_Oxford_Region = Region_Name %in% oxford_regions) %>% 
-#   setNames(c("Region Name", "Median Ratio", "Initial Price",
-#                     "Final Price", "Percentage Increase", "Oxford Region"))
-# 
-# kable(final_table, "latex", booktabs = TRUE) %>%
-#   kable_styling(latex_options = c("striped", "scale_down")) %>%
-#   column_spec(1, bold = TRUE) %>%
-#   row_spec(0, bold = TRUE)
+<<Compare England and Oxford House Prices, results='asis', echo=FALSE>>=
+england_regions <- houseprices_raw %>%
+  filter(substring(Area_Code, 1, 1) == "E" & Region_Name != "England") %>%
+  mutate(Month = floor_date(Date, "month"))
 
+## Calculate median ratios
+# First, summarize the England data
+england_avg <- england_data %>%
+  mutate(Month = floor_date(Date, "month")) %>%
+  group_by(Month) %>%
+  summarize(England_Avg_Price = mean(Average_Price), .groups = 'drop')
+
+# join and calculate ratios
+median_ratios <- england_regions %>%
+  left_join(england_avg, by = "Month") %>%
+  mutate(Ratio = Average_Price / England_Avg_Price) %>%
+  group_by(Region_Name) %>%
+  summarize(Median_Ratio = median(Ratio, na.rm = TRUE), .groups = 'drop')
+
+# Select top 10 regions
+top_regions <- median_ratios %>%
+  arrange(desc(Median_Ratio)) %>%
+  slice(1:10)
+
+# Calculate initial and final prices, and percentage increase
+price_data <- england_regions %>%
+  filter(Region_Name %in% top_regions$Region_Name) %>%
+  group_by(Region_Name) %>%
+  summarize(Initial_Price = first(Average_Price),
+            Final_Price = last(Average_Price),
+            Percentage_Increase = (Final_Price - Initial_Price) / Initial_Price * 100,
+            .groups = 'drop')
+
+# Extract unique Oxford region names
+oxford_regions <- unique(oxford_data$Region_Name)
+
+# Create the table
+final_table <- left_join(top_regions, price_data, by = "Region_Name") %>%
+  mutate(Is_Oxford_Region = Region_Name %in% oxford_regions) %>%
+  setNames(c("Region Name", "Median Ratio", "Initial Price",
+                    "Final Price", "% Increase", "Oxford?"))
+
+
+print(xtable(final_table, digits = 2, align = c("l", "l", rep("c", 5))),
+      size="footnotesize")
 @
 
 
