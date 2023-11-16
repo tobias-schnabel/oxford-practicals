@@ -19,6 +19,7 @@
 suppressPackageStartupMessages(library(knitr))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ggthemes))
@@ -34,7 +35,7 @@ inflation_raw <- suppressMessages(read_csv("series-181023_cumulative.csv"))
 \begin{figure}[h!]
 \centering
 \caption{Average House Price in England Over Time}
-<<Plot mean House Price in England, echo = F,  fig = T,fig.width=10, fig.height=6, out.width='\\textwidth'>>=
+<<Plot mean House Price in England, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
 
 # Filter the data for the England region
 england_data <- houseprices_raw %>% 
@@ -47,12 +48,97 @@ ggplot(england_data, aes(x = Date, y = Average_Price)) +
   theme_minimal() +
   labs(
     x = "Date",
-    y = "Average Price (in Thousands)"
+    y = "Average Price (in Thousands of £)"
   )
+@
+\end{figure} 
+
+\begin{figure}[h!]
+\centering
+\caption{Comparison of Average House Prices between England and Oxford Regions}
+<<Plot for Oxford Houses, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
+# Filter data for Oxford regions
+oxford_data <- houseprices_raw %>% 
+  filter(grepl("Oxford", Region_Name))
+
+# Merge with England data to get common dates
+common_data <- merge(england_data, oxford_data, by = "Date")
+
+# Calculate average price for Oxford regions
+oxford_avg <- common_data %>% 
+  group_by(Date) %>% 
+  summarize(Average_Price_Oxford = mean(Average_Price.y))
+
+# Merge back with England data
+final_data <- merge(england_data, oxford_avg, by = "Date")
+
+# Adjusted Plot
+ggplot(final_data) +
+  geom_line(aes(x = Date, y = Average_Price, color = "England")) +
+  geom_line(aes(x = Date, y = Average_Price_Oxford, color = "Oxford Regions")) +
+  scale_color_manual(values = tableau_color_pal()(2)) +
+  scale_y_continuous(labels = scales::comma_format(scale = 1/1000, suffix = "K")) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Date",
+    y = "Average Price (in Thousands of £)",
+    color = "Region"
+  )
+
 @
 \end{figure}
 
+<<Compare England and Oxford House Prices, echo=F>>=
+# england_regions <- houseprices_raw %>%
+#   filter(substring(Area_Code, 1, 1) == "E" & Region_Name != "England") %>%
+#   mutate(Month = floor_date(Date, "month"))
+# 
+# ## Calculate median ratios
+# # First, summarize the England data
+# england_avg <- england_data %>%
+#   mutate(Month = floor_date(Date, "month")) %>%
+#   group_by(Month) %>%
+#   summarize(England_Avg_Price = mean(Average_Price), .groups = 'drop')
+# 
+# # join and calculate ratios
+# median_ratios <- england_regions %>%
+#   left_join(england_avg, by = "Month") %>%
+#   mutate(Ratio = Average_Price / England_Avg_Price) %>%
+#   group_by(Region_Name) %>%
+#   summarize(Median_Ratio = median(Ratio, na.rm = TRUE), .groups = 'drop')
+# 
+# # Select top 10 regions
+# top_regions <- median_ratios %>%
+#   arrange(desc(Median_Ratio)) %>%
+#   slice(1:10)
+# 
+# # Calculate initial and final prices, and percentage increase
+# price_data <- england_regions %>%
+#   filter(Region_Name %in% top_regions$Region_Name) %>%
+#   group_by(Region_Name) %>%
+#   summarize(Initial_Price = first(Average_Price),
+#             Final_Price = last(Average_Price),
+#             Percentage_Increase = (Final_Price - Initial_Price) / Initial_Price * 100,
+#             .groups = 'drop')
+# 
+# # Extract unique Oxford region names
+# oxford_regions <- unique(oxford_data$Region_Name)
+# 
+# # Create the table
+# final_table <- left_join(top_regions, price_data, by = "Region_Name") %>% 
+#   mutate(Is_Oxford_Region = Region_Name %in% oxford_regions) %>% 
+#   setNames(c("Region Name", "Median Ratio", "Initial Price",
+#                     "Final Price", "Percentage Increase", "Oxford Region"))
+# 
+# kable(final_table, "latex", booktabs = TRUE) %>%
+#   kable_styling(latex_options = c("striped", "scale_down")) %>%
+#   column_spec(1, bold = TRUE) %>%
+#   row_spec(0, bold = TRUE)
+
+@
 
 
 
 \end{document}
+
