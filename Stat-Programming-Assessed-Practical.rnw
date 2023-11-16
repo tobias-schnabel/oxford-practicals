@@ -133,10 +133,55 @@ final_table <- left_join(top_regions, price_data, by = "Region_Name") %>%
                     "Final Price", "% Increase", "Oxford?"))
 
 
-print(xtable(final_table, digits = 2, align = c("l", "l", rep("c", 5))),
+print(xtable(final_table, digits = 2, align = c("l", "l", rep("c", 5)),
+             caption = "Ten Highest Median Ratios of Average House Prices"),
+      caption.placement = "top",
       size="footnotesize")
 @
 
+\begin{figure}[h!]
+\centering
+\caption{Percentage Increase in House Prices compared to Inflation Rate}
+<<Inflation plot, echo = F,  fig = T,fig.width=10, fig.height=6, out.width='\\textwidth'>>=
+# Extracting the monthly inflation data starting from the 186th row
+monthly_inflation <- inflation_raw %>%
+  slice(-1:-185) %>%
+  mutate(Date = parse_date(Title, format = "%Y %b"),
+         Inflation = as.numeric(`CPIH INDEX 00: ALL ITEMS 2015=100`)) %>%
+  select(Date, Inflation)
+
+# Ensure England Data has date column
+england_data <- england_data %>%
+  mutate(Date = as.Date(Date))
+
+# Merge in inflation data
+merged_data <- left_join(england_data, monthly_inflation, by = "Date")
+
+# Remove rows with NA in either Average_Price or Inflation
+merged_data <- merged_data %>%
+  filter(!is.na(Average_Price) & !is.na(Inflation))
+
+# Calculate the percentage increase from the first available data point
+merged_data <- merged_data %>%
+  mutate(House_Price_Increase = (Average_Price / first(Average_Price) - 1) * 100,
+         Inflation_Increase = (Inflation / first(Inflation) - 1) * 100)
+
+
+# Plot percentage increases with 2 y-axes
+ggplot(merged_data, aes(x = Date)) +
+  geom_line(aes(y = House_Price_Increase, colour = "House Prices in England"), linewidth = 0.5) +
+  geom_line(aes(y = Inflation_Increase, colour = "Inflation Rate"), linewidth = 0.5, linetype = "dashed") +
+  scale_colour_manual(values = tableau_color_pal()(2)) +
+  theme_minimal() +
+  labs(x = "Date", y = "House Price Increase (%)", colour = "Metric") +
+  scale_y_continuous(
+    name = "Month-to-Month Change in %", #House Price Increase (%)
+    labels = scales::percent_format(scale = 1) #,  sec.axis = sec_axis(~ ., name = "Inflation Rate (%)", labels = scales::percent_format(scale = 1))
+  ) +
+  theme(legend.position = "bottom")
+
+@
+\end{figure}
 
 
 \end{document}
