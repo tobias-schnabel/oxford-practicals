@@ -13,18 +13,24 @@
 \maketitle
 
 \subsection*{British House Prices}
-
 <<setup, echo = F>>=
 
-suppressPackageStartupMessages(library(knitr))
-suppressPackageStartupMessages(library(readr))
-suppressPackageStartupMessages(library(dplyr))
-suppressPackageStartupMessages(library(lubridate))
-suppressPackageStartupMessages(library(tidyr))
-suppressPackageStartupMessages(library(ggplot2))
-suppressPackageStartupMessages(library(ggthemes))
-# suppressPackageStartupMessages(library(kableExtra))
-suppressPackageStartupMessages(library(xtable))
+# Define needed packages
+new_packages <- c("knitr", "readr", "dplyr", "lubridate", "tidyr", "ggplot2", "ggthemes", "xtable")
+
+# Install new packages not yet installed
+installed_new_packages <- new_packages %in% rownames(installed.packages())
+if (any(installed_new_packages == FALSE)) {
+  install.packages(new_packages[!installed_new_packages])
+}
+
+# Load new packages, suppressing startup messages
+invisible(lapply(new_packages, function(pkg) {
+  suppressPackageStartupMessages(library(pkg, character.only = TRUE))
+}))
+
+# use ggthemes so that renv doesn't complain about it
+foo <- capture.output(ggthemes::tableau_color_pal())
 
 # Load first data set
 houseprices_raw <- suppressMessages(read_csv("Average-prices-2023-07.csv"))
@@ -42,10 +48,10 @@ inflation_raw <- suppressMessages(read_csv("series-181023_cumulative.csv"))
 england_data <- houseprices_raw %>% 
   filter(Region_Name == "England")
 
-# Plot
+# Plot in thousands of pounds
 ggplot(england_data, aes(x = Date, y = Average_Price)) +
   geom_line(color = tableau_color_pal()(1)) + 
-  scale_y_continuous(labels = scales::comma_format(scale = 1/1000, suffix = "K")) + # This will format the y labels with a "K" for thousands
+  scale_y_continuous(labels = scales::comma_format(scale = 1/1000, suffix = "K")) + 
   theme_minimal() +
   labs(
     x = "Date",
@@ -182,6 +188,9 @@ ggplot(merged_data, aes(x = Date)) +
 
 @
 \end{figure}
+
+\newpage
+\section*{Chromosome Painting}
 
 
 \end{document}
