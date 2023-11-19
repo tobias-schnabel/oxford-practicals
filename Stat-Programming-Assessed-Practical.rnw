@@ -39,6 +39,7 @@ inflation_raw <- suppressMessages(read_csv("series-181023_cumulative.csv"))
 
 @
 
+Figure \ref{fig1} below displays the evolution of House Prices in England over time.
 \begin{figure}[h!]
 \centering
 \caption{Average House Price in England Over Time}
@@ -58,8 +59,10 @@ ggplot(england_data, aes(x = Date, y = Average_Price)) +
     y = "Average Price (in Thousands of £)"
   )
 @
+\label{fig1}
 \end{figure} 
 
+Figure \ref{fig2} below additionally displays the evolution of House Prices in the Oxford Regions as well as England as a whole over time.
 \begin{figure}[h!]
 \centering
 \caption{Comparison of Average House Prices between England and Oxford Regions}
@@ -94,8 +97,10 @@ ggplot(final_data) +
   )
 
 @
+\label{fig2}
 \end{figure}
 
+Table \ref{tab1} below shows that of the ten regions with the highest median of the ratio $\frac{regional\; average\; house\; price}{average\; house\; price\; in\; England}$. Perhaps unsurprisingly, we can see that the ten most expensive regions by this metric are geographically concentrated in London and its suburbs, and that no Oxford Regions are included.
 <<Compare England and Oxford House Prices, results='asis', echo=FALSE>>=
 england_regions <- houseprices_raw %>%
   filter(substring(Area_Code, 1, 1) == "E" & Region_Name != "England") %>%
@@ -140,11 +145,13 @@ final_table <- left_join(top_regions, price_data, by = "Region_Name") %>%
 
 
 print(xtable(final_table, digits = 2, align = c("l", "l", rep("c", 5)),
-             caption = "Ten Highest Median Ratios of Average House Prices"),
+             caption = "Ten Highest Median Ratios of Average House Prices",
+             label = "tab1"),
       caption.placement = "top",
       size="footnotesize")
 @
 
+Figure \ref{fig3} below compares the month-on-month percentage increase in House Prices in England to monthly inflation, defined as the percentage increase in the monthly Consumer Price Index over the period in which data for both is available. We can see that like in most countries, the increase in the average price of a house has drastically outpaced the general cost-of-living increase since the year 2000.
 \begin{figure}[h!]
 \centering
 \caption{Percentage Increase in House Prices compared to Inflation Rate}
@@ -187,6 +194,7 @@ ggplot(merged_data, aes(x = Date)) +
   theme(legend.position = "bottom")
 
 @
+\label{fig3}
 \end{figure}
 
 \newpage
