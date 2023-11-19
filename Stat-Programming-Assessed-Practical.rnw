@@ -12,11 +12,11 @@
 
 \maketitle
 
-\subsection*{British House Prices}
+\subsection{British House Prices}
 <<setup, echo = F>>=
 
 # Define needed packages
-new_packages <- c("knitr", "readr", "dplyr", "lubridate", "tidyr", "ggplot2", "ggthemes", "xtable")
+new_packages <- c("knitr", "readr", "dplyr", "lubridate", "tidyr", "ggplot2", "ggthemes", "xtable", "testthat")
 
 # Install new packages not yet installed
 installed_new_packages <- new_packages %in% rownames(installed.packages())
@@ -198,14 +198,15 @@ ggplot(merged_data, aes(x = Date)) +
 \end{figure}
 
 \newpage
-\section*{Chromosome Painting}
-<<>>=
+\section{Chromosome Painting}
+\subsection{Implementation of Forward Algorithm}
+<<forward algorithm>>=
 # Function to calculate emission probability (eq. 3)
 emission_probability <- function(observed, reference, error = 0.1) {
   return ((1 - error)^(observed == reference) * error^(observed != reference))
 }
 
-# matrices α and β , both with K rows and T columns
+# matrices alpha and beta , both with K rows and T columns
 forward <- function(haps, hap, error = 0.1) {
   K <- nrow(haps)
   T <- ncol(haps)
@@ -213,13 +214,13 @@ forward <- function(haps, hap, error = 0.1) {
   # Initialize alpha matrix
   alpha <- matrix(0, nrow = K, ncol = T)
   
-  # Calculate initial and emission probabilities
+  # Compute initial and emission probabilities
   pi <- 1 / K  # (eq. 1)
   for (k in 1:K) { # (eq. 4)
     alpha[k, 1] <- pi * emission_probability(hap[1], haps[k, 1], error)
   }
   
-  # Induction step
+  # Induction step to compute (eq. 5)
   for (t in 2:T) {
     for (k in 1:K) {
       transition_sum <- 0
@@ -227,7 +228,7 @@ forward <- function(haps, hap, error = 0.1) {
   A_ik <- ifelse(i == k, (1 - 0.999) / K + 0.999, (1 - 0.999) / K) # (eq. 2)
   transition_sum <- transition_sum + alpha[i, t - 1] * A_ik
   }
-      b_kt <- calculate_emission_probability(hap[t], haps[k, t], error)
+      b_kt <- emission_probability(hap[t], haps[k, t], error)
       alpha[k, t] <- transition_sum * b_kt
     }
   }
@@ -237,6 +238,108 @@ forward <- function(haps, hap, error = 0.1) {
 
 @
 
+\subsection{Unit Test for Forward Algorithm Implementation}
+<<unit test for forward algorithm>>=
+test_that("alpha matrix has expected form when haps and hap always match", {
+  K <- 10  # Number of rows in haps
+  T <- 15  # Number of columns in haps = length of hap
+  e <- 0.1  # Error rate (= default value)
+  
+  # Create haps and hap such that they always match (both all 0)
+  haps <- matrix(0, nrow = K, ncol = T)
+  hap <- rep(0, T)
+  
+  # Run the forward function
+  alpha <- forward(haps, hap, error = e)
+  
+  # Check first column
+  expected_first_column <- rep((1 - e) / K, K)
+  expect_equal(alpha[, 1], expected_first_column)
+  
+  # Check all other columns
+  for (t in 2:T) {
+    expect_equal(alpha[, t], alpha[, t - 1] * (1 - e), tolerance = 1e-5)
+  }
+})
+@
+
+\subsection{Implementation of Backward Algorithm}
+<<backward algorithm>>=
+backward <- function(haps, hap, error = 0.1) {
+  K <- nrow(haps)
+  T <- ncol(haps)
+  
+  # Initialize beta matrix (eq. 6)
+  beta <- matrix(0, nrow = K, ncol = T)  
+  beta[, T] <- 1  # Set last column to 1
+  
+  # Induction step (eq. 7)
+  for (t in (T-1):1) {
+      for (k in 1:K) {
+        sum_transition <- 0
+        for (i in 1:K) { # (eq. 2)
+          A_ki <- ifelse(k == i, (1 - 0.999) / K + 0.999, (1 - 0.999) / K)  
+          b_i_t_plus_1 <- emission_probability(hap[t+1], haps[i, t+1], error)
+          sum_transition <- sum_transition + 
+              A_ki * b_i_t_plus_1 * beta[i, t+1]
+        }
+        beta[k, t] <- sum_transition
+      }
+    }
+  
+  return(beta)
+}
+
+@
+\newpage
+\subsection{Implementation of Gamma Function}
+<<gamma function>>=
+gamma <- function(haps, hap, error = 0.1) {
+  K <- nrow(haps)
+  T <- ncol(haps)
+
+  # Compute alpha and beta matrices
+  alpha <- forward(haps, hap, error)
+  beta <- backward(haps, hap, error)
+
+  # Compute normalization factor (denominator)
+  norm_factor <- sum(alpha[, T])
+
+  # Initialize gamma matrix
+  gamma_matrix <- matrix(0, nrow = K, ncol = T)
+
+  # Update gamma values (eq. 8)
+  for (t in 1:T) {
+    for (k in 1:K) {
+      gamma_matrix[k, t] <- (alpha[k, t] * beta[k, t]) / norm_factor
+    }
+
+  return(gamma_matrix)
+  }
+}
+
+@
+
+\subsection{Unit Test for Gamma Function Implementation}
+<<unit test for gamma function>>=
+test_that("column sums of gamma matrix sum to 1", {
+  set.seed(42)  # For reproducibility
+  K <- 10  # Number of rows in haps
+  T <- 15  # Number of columns in haps = length of hap
+  e <- 0.1  # Error rate (= default value)
+
+  # Create random haps and hap with 0 or 1 entries
+  haps <- matrix(sample(0:1, K * T, replace = T), nrow = K, ncol = T)
+  hap <- sample(0:1, T, replace = T)
+
+  # Run the gamma function
+  gamma_matrix <- gamma(haps, hap, error = e)
+
+   # Check total sum
+  total_sum <- sum(gamma_matrix)
+  expect_equal(total_sum, 1, tolerance = 1e-5)
+})
+@
 
 \end{document}
 
