@@ -16,7 +16,7 @@
 <<setup, echo = F>>=
 
 # Define needed packages
-new_packages <- c("knitr", "readr", "dplyr", "lubridate", "tidyr", "ggplot2", "ggthemes", "xtable", "testthat", "microbenchmark")
+new_packages <- c("knitr", "readr", "dplyr", "lubridate", "tidyr", "ggplot2", "ggthemes", "xtable", "testthat", "microbenchmark", "parallel")
 
 # Install new packages not yet installed
 installed_new_packages <- new_packages %in% rownames(installed.packages())
@@ -346,5 +346,38 @@ test_that("column sums of gamma matrix sum to 1", {
 \item The forward algorithm has a time complexity of $\mathcal{O}(K^2 \cdot T)$ as for each time step $t$, it iterates over $K$ states, and within each state again iterates over $K$ states to compute the transition probabilities.
 \item The backward algorithm has an identical time complexity of $\mathcal{O}(K^2 \cdot T)$ as it performs the same iterations, just in a different oder.
 \end{enumerate}
+
+<<small benchmarks>>=
+# Define a small test case
+K <- 10  # Number of haplotypes
+T <- 10  # Length of each haplotype
+error <- 0.1
+
+# Generate random haplotypes for testing
+haps <- matrix(sample(0:1, K * T, replace = T), nrow = K, ncol = T)
+hap <- sample(0:1, T, replace = T)
+
+# Benchmark the forward function
+forward_benchmark <- microbenchmark(
+  forward(haps, hap, error),
+  times = 100 
+)
+
+# Benchmark the backward function
+backward_benchmark <- microbenchmark(
+  backward(haps, hap, error),
+  times = 100  
+)
+
+# Print the results
+print(forward_benchmark)
+print(backward_benchmark)
+
+# Optional: Compare the performance visually using boxplots
+boxplot(forward_benchmark$time, backward_benchmark$time)
+@
+
+
+
 \end{document}
 
