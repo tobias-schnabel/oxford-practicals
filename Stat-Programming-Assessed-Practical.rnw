@@ -199,6 +199,43 @@ ggplot(merged_data, aes(x = Date)) +
 
 \newpage
 \section*{Chromosome Painting}
+<<>>=
+# Function to calculate emission probability (eq. 3)
+emission_probability <- function(observed, reference, error = 0.1) {
+  return ((1 - error)^(observed == reference) * error^(observed != reference))
+}
+
+# matrices α and β , both with K rows and T columns
+forward <- function(haps, hap, error = 0.1) {
+  K <- nrow(haps)
+  T <- ncol(haps)
+  
+  # Initialize alpha matrix
+  alpha <- matrix(0, nrow = K, ncol = T)
+  
+  # Calculate initial and emission probabilities
+  pi <- 1 / K  # (eq. 1)
+  for (k in 1:K) { # (eq. 4)
+    alpha[k, 1] <- pi * emission_probability(hap[1], haps[k, 1], error)
+  }
+  
+  # Induction step
+  for (t in 2:T) {
+    for (k in 1:K) {
+      transition_sum <- 0
+      for (i in 1:K) {
+  A_ik <- ifelse(i == k, (1 - 0.999) / K + 0.999, (1 - 0.999) / K) # (eq. 2)
+  transition_sum <- transition_sum + alpha[i, t - 1] * A_ik
+  }
+      b_kt <- calculate_emission_probability(hap[t], haps[k, t], error)
+      alpha[k, t] <- transition_sum * b_kt
+    }
+  }
+  
+  return(alpha)
+}
+
+@
 
 
 \end{document}
