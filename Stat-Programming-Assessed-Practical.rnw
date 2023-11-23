@@ -199,7 +199,7 @@ ggplot(merged_data, aes(x = Date)) +
 
 \newpage
 \section{Chromosome Painting}
-\subsection{Implementation of Forward Algorithm}
+\subsection{Implementation of \texttt{forward} Algorithm}
 <<forward algorithm>>=
 # Function to calculate emission probability (eq. 3)
 emission_probability <- function(observed, reference, error = 0.1) {
@@ -238,7 +238,7 @@ forward <- function(haps, hap, error = 0.1) {
 
 @
 
-\subsection{Unit Test for Forward Algorithm Implementation}
+\subsection{Unit Test for \texttt{forward} Algorithm Implementation}
 <<unit test for forward algorithm>>=
 test_that("alpha matrix has expected form when haps and hap always match", {
   K <- 10  # Number of rows in haps
@@ -263,7 +263,7 @@ test_that("alpha matrix has expected form when haps and hap always match", {
 })
 @
 
-\subsection{Implementation of Backward Algorithm}
+\subsection{Implementation of \texttt{backward} Algorithm}
 <<backward algorithm>>=
 backward <- function(haps, hap, error = 0.1) {
   K <- nrow(haps)
@@ -292,7 +292,7 @@ backward <- function(haps, hap, error = 0.1) {
 
 @
 \newpage
-\subsection{Implementation of Gamma Function}
+\subsection{Implementation of \texttt{gamma} Function}
 <<gamma function>>=
 gamma <- function(haps, hap, error = 0.1) {
   K <- nrow(haps)
@@ -320,7 +320,7 @@ gamma <- function(haps, hap, error = 0.1) {
 
 @
 
-\subsection{Unit Test for Gamma Function Implementation}
+\subsection{Unit Test for \texttt{gamma} Function Implementation}
 <<unit test for gamma function>>=
 test_that("column sums of gamma matrix sum to 1", {
   set.seed(42)  # For reproducibility
@@ -341,22 +341,20 @@ test_that("column sums of gamma matrix sum to 1", {
 })
 @
 
-\subsection{Computational Complexity of Forward and Backward Algorithms}
+\subsection{Computational Complexity of \texttt{forward} and \texttt{backward} Algorithms}
 \begin{enumerate}
-\item The forward algorithm has a time complexity of $\mathcal{O}(K^2 \cdot T)$ as for each time step $t$, it iterates over $K$ states, and within each state again iterates over $K$ states to compute the transition probabilities.
-\item The backward algorithm has an identical time complexity of $\mathcal{O}(K^2 \cdot T)$ as it performs the same iterations, just in a different oder.
+\item The \texttt{forward} algorithm has a time complexity of $\mathcal{O}(K^2 \cdot T)$ as for each time step $t$, it iterates over $K$ states, and within each state again iterates over $K$ states to compute the transition probabilities.
+\item The \texttt{backward} algorithm has an identical time complexity of $\mathcal{O}(K^2 \cdot T)$ as it performs the same iterations, just in a different oder.
 \end{enumerate}
 
+Figures \ref{fig4} and \ref{fig5} below show benchmark results for both the forward and backward algorithms, executed $10$ times each for all $K \times T$ with $K, L ={5, \ldots, 20}$. The fitted lines for the median execution time for each value of $K$ and $T$, respectively, look polynomial in $K$ and linear in $T$. 
+<<Benchmarking and Plotting Functions, echo = F>>=
+# Standardized Benchmarking Function
+run_benchmark <- function(algo_func) {
+  sizes <- expand.grid(K = 5:20, T = 5:20)
+  bench_results <- data.frame(K = integer(), T = integer(), time = numeric())
 
-\begin{figure}[h!]
-\centering
-\caption{Benchmark Results for forward algorithm}
-<<Benchmark Plots, echo = F,  fig = T,fig.width=10, fig.height=6, out.width='\\textwidth'>>=
-sizes <- expand.grid(K = 5:20, T = 5:20)
-bench_results <- data.frame(K = integer(), T = integer(), time = numeric())
-
-# Run benchmarks for different sizes and collect results
-for (i in 1:nrow(sizes)) {
+  for (i in 1:nrow(sizes)) {
     size <- sizes[i,]
     K <- size$K
     T <- size$T
@@ -365,37 +363,42 @@ for (i in 1:nrow(sizes)) {
     
     # Using mclapply to run in parallel
     benchmark <- mclapply(1:10, function(i) {
-        system.time(forward(haps, hap, error = 0.1))[3]
+        system.time(algo_func(haps, hap, error = 0.1))[3]
     }, mc.cores = detectCores() - 1)
     
     # Collecting results
     mean_time <- mean(sapply(benchmark, `[[`, 1))
-    bench_results <- rbind(bench_results, 
-                           data.frame(K = K, T = T, time = mean_time))
+    bench_results <- rbind(bench_results, data.frame(K = K, T = T, 
+                                                     time = mean_time))
+  }
+
+  # Transform to long format
+  bench_results_long <- bench_results %>%
+    gather(key = "variable", value = "value", K, T)
+  
+  return(bench_results_long)
 }
 
-bench_results_long <- bench_results %>%
-  gather(key = "variable", value = "value", K, T)
-
-# get plot colors
-colors <- tableau_color_pal()(4)
-cap <- "Median execution time required for varying values of K and T. Each point represents the median execution time across all 10 simulations for a given K or T. \nThe red and turquoise lines are smoothed fits indicating the trend of time complexity, with fitting quadratic in K and linear in T"
+# Plotting function for benchmark results
+plot_benchmark <- function(bench_results){
+  colors <- tableau_color_pal()(4) # get plot colors
+cap <- "Median execution time required for varying values of K and T. Each point represents the median execution time across all 10 simulations for a given K or T. \nThe red and turquoise lines are smoothed fits on all data points indicating the trend of time complexity, with fitting quadratic in K and linear in T"
 
 # plot
-ggplot(bench_results_long, aes(x = value, y = time)) +
+benchplot <- ggplot(bench_results, aes(x = value, y = time)) +
   stat_summary(
     fun = median, geom = "point", 
     aes(color = variable), size = 1.5, 
     show.legend = F 
   ) +
   geom_smooth(
-    data = bench_results_long %>% filter(variable == "K"), 
+    data = bench_results %>% filter(variable == "K"), 
     aes(x = value, y = time), 
     method = "lm", formula = y ~ poly(x, 2, raw = T), 
     color = colors[3], se = T
   ) +
   geom_smooth(
-    data = bench_results_long %>% filter(variable == "T"), 
+    data = bench_results %>% filter(variable == "T"), 
     aes(x = value, y = time), 
     method = "lm", formula = y ~ x, 
     color = colors[4], se = T
@@ -405,9 +408,84 @@ ggplot(bench_results_long, aes(x = value, y = time)) +
        caption = cap) +
   theme_minimal() +
   scale_color_manual(values = colors[1:2])
+
+  return(benchplot)
+}
+@
+
+\begin{figure}[h!]
+\centering
+\caption{Benchmark Results for \texttt{forward} Algorithm}
+<<Benchmark Plot for forward, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
+plot_benchmark(run_benchmark(forward))
 @
 \label{fig4}
 \end{figure}
+\begin{figure}[h!]
+\centering
+\caption{Benchmark Results for \texttt{backward} Algorithm}
+<<Benchmark Plot for backward, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
+# Benchmark function
+plot_benchmark(run_benchmark(backward))
+@
+\label{fig5}
+\end{figure}
+\newpage
 
+\subsection{Implementation of \texttt{forward2} Algorithm}
+<<forward2 implementation>>=
+forward2 <- function(haps, hap, error = 0.1) {
+  K <- nrow(haps)
+  T <- ncol(haps)
+  alpha <- matrix(0, nrow = K, ncol = T)
+  pi <- 1 / K
+
+  for (k in 1:K) {
+    alpha[k, 1] <- pi * emission_probability(hap[1], haps[k, 1], error)
+  }
+
+  for (t in 2:T) {
+    phi <- sum(alpha[, t - 1]) * (1 - 0.999) / K
+    for (k in 1:K) {
+      A_ik <- ifelse(k == k, (1 - 0.999) / K + 0.999, (1 - 0.999) / K)
+      b_kt <- emission_probability(hap[t], haps[k, t], error)
+      alpha[k, t] <- (phi + 0.999 * alpha[k, t - 1]) * b_kt
+    }
+  }
+
+  return(alpha)
+}
+@
+
+<<unit test for forward2 >>=
+test_that("forward and forward2 produce the same outputs", {
+  set.seed(42)  # For reproducibility
+  K <- 10  # Number of rows in haps
+  T <- 15  # Number of columns in haps = length of hap
+  e <- 0.1  # Error rate (= default value)
+
+  # Generate example data
+  haps <- matrix(sample(0:1, K * T, replace = TRUE), nrow = K)
+  hap <- sample(0:1, T, replace = TRUE)
+
+  # Run both functions
+  alpha_forward <- forward(haps, hap, e)
+  alpha_forward2 <- forward2(haps, hap, e)
+
+  # Check if the outputs are equal
+  expect_equal(alpha_forward, alpha_forward2, tolerance = 1e-5)
+})
+@
+The \texttt{forward2} algorithm has a time complexity of $\mathcal{O}(K \cdot T)$ as it computes the initial probabilities ($\mathcal{O}(K)$) and then for each time step $t$, it sums over all $K$ states ($\mathcal{O}(K)$) and computes equation (14) ($\mathcal{O}(1)$). Since the main loop runs for each time step $T$, and within each time step, two $\mathcal{O}(K)$ operations are performed (one for summing alpha and one for the loop over $K$), the overall complexity of the forward2 function is $\mathcal{O}(K \cdot T)$. Figure \ref{fig6} below displays this improved performance.
+
+\begin{figure}[h!]
+\centering
+\caption{Benchmark Results for \texttt{forward2} Algorithm}
+<<Benchmark Plot for forward2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
+# Benchmark function
+plot_benchmark(run_benchmark(forward2))
+@
+\label{fig6}
+\end{figure}
 \end{document}
 
