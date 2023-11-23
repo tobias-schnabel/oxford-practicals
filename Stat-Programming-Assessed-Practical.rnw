@@ -487,5 +487,61 @@ plot_benchmark(run_benchmark(forward2))
 @
 \label{fig6}
 \end{figure}
+
+\subsection{Implementation of \texttt{backward2} Algorithm}
+<<backward2 algorithm>>=
+backward2 <- function(haps, hap, error = 0.1) {
+  K <- nrow(haps)
+  T <- ncol(haps)
+
+  # Initialize beta matrix (eq. 6)
+  beta <- matrix(0, nrow = K, ncol = T)  
+  beta[, T] <- 1  # Set last column to 1
+  
+  # Induction step (eq. 14)
+  for (t in (T-1):1) {
+    # Calculate the phi term which is constant for all k (eq. 13)
+    phi <- sum(beta[, t+1] * sapply(1:K, function(i) emission_probability(hap[t+1], haps[i, t+1], error))) * (1 - 0.999) / K
+    
+    for (k in 1:K) { # Update beta for each k using the phi term and the specific transition and emission probabilities for k (eq. 14)
+      beta[k, t] <- phi + 0.999 * beta[k, t+1] * emission_probability(hap[t+1], haps[k, t+1], error)
+    }
+  }
+  
+  return(beta)
+}
+@
+
+<<unit test for backward2 >>=
+test_that("backward and backward2 produce the same outputs", {
+  set.seed(42)  # For reproducibility
+  K <- 10  # Number of rows in haps
+  T <- 15  # Number of columns in haps = length of hap
+  e <- 0.1  # Error rate (= default value)
+
+  # Generate example data
+  haps <- matrix(sample(0:1, K * T, replace = TRUE), nrow = K)
+  hap <- sample(0:1, T, replace = TRUE)
+
+  # Run both functions
+  beta_backward <- backward(haps, hap, e)
+  beta_backward2 <- backward2(haps, hap, e)
+
+  # Check if the outputs are equal
+  expect_equal(beta_backward, beta_backward2, tolerance = 1e-5)
+})
+@
+The \texttt{backward2} algorithm has a time complexity of $\mathcal{O}(K \cdot T)$ as it computes the initial probabilities ($\mathcal{O}(K)$) and then for each time step $t$, it sums over all $K$ states ($\mathcal{O}(K)$) and computes equation (14) ($\mathcal{O}(1)$). Since the main loop runs for each time step $T$, and within each time step, two $\mathcal{O}(K)$ operations are performed (one for summing alpha and one for the loop over $K$), the overall complexity of the forward2 function is $\mathcal{O}(K \cdot T)$. Figure \ref{fig7} below displays this improved performance.
+
+\begin{figure}[h!]
+\centering
+\caption{Benchmark Results for \texttt{backward2} Algorithm}
+<<Benchmark Plot for backward2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
+# Benchmark function
+plot_benchmark(run_benchmark(backward2))
+@
+\label{fig7}
+\end{figure}
+
 \end{document}
 
