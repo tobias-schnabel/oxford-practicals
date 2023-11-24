@@ -434,6 +434,7 @@ benchplot <- ggplot(bench_results, aes(x = value, y = time)) +
 
   return(benchplot)
 }
+
 @
 
 \begin{figure}[h!]
@@ -441,6 +442,7 @@ benchplot <- ggplot(bench_results, aes(x = value, y = time)) +
 \caption{Benchmark Results for \texttt{forward} Algorithm}
 <<Benchmark Plot for forward, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
 plot_benchmark(run_benchmark(forward))
+
 @
 \label{fig4}
 \end{figure}
@@ -450,6 +452,7 @@ plot_benchmark(run_benchmark(forward))
 <<Benchmark Plot for backward, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
 # Benchmark function
 plot_benchmark(run_benchmark(backward))
+
 @
 \label{fig5}
 \end{figure}
@@ -478,6 +481,7 @@ forward2 <- function(haps, hap, error = 0.1) {
 
   return(alpha)
 }
+
 @
 
 <<unit test for forward2 >>=
@@ -498,6 +502,7 @@ test_that("forward and forward2 produce the same outputs", {
   # Check if the outputs are equal
   expect_equal(alpha_forward, alpha_forward2, tolerance = 1e-5)
 })
+
 @
 The \texttt{forward2} algorithm has a time complexity of $\mathcal{O}(K \cdot T)$ as it computes the initial probabilities ($\mathcal{O}(K)$) and then for each time step $t$, it sums over all $K$ states ($\mathcal{O}(K)$) and computes equation (14) ($\mathcal{O}(1)$). Since the main loop runs for each time step $T$, and within each time step, two $\mathcal{O}(K)$ operations are performed (one for summing alpha and one for the loop over $K$), the overall complexity of the forward2 function is $\mathcal{O}(K \cdot T)$. Figure \ref{fig6} below displays this improved performance.
 
@@ -507,6 +512,7 @@ The \texttt{forward2} algorithm has a time complexity of $\mathcal{O}(K \cdot T)
 <<Benchmark Plot for forward2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
 # Benchmark function
 plot_benchmark(run_benchmark(forward2))
+
 @
 \label{fig6}
 \end{figure}
@@ -533,6 +539,7 @@ backward2 <- function(haps, hap, error = 0.1) {
   
   return(beta)
 }
+
 @
 
 <<unit test for backward2 >>=
@@ -553,6 +560,7 @@ test_that("backward and backward2 produce the same outputs", {
   # Check if the outputs are equal
   expect_equal(beta_backward, beta_backward2, tolerance = 1e-5)
 })
+
 @
 The \texttt{backward2} algorithm has a time complexity of $\mathcal{O}(K \cdot T)$ as it computes the initial probabilities ($\mathcal{O}(K)$) and then for each time step $t$, it sums over all $K$ states ($\mathcal{O}(K)$) and computes equation (14) ($\mathcal{O}(1)$). Since the main loop runs for each time step $T$, and within each time step, two $\mathcal{O}(K)$ operations are performed (one for summing alpha and one for the loop over $K$), the overall complexity of the forward2 function is $\mathcal{O}(K \cdot T)$. Figure \ref{fig7} below displays this improved performance.
 
@@ -562,6 +570,7 @@ The \texttt{backward2} algorithm has a time complexity of $\mathcal{O}(K \cdot T
 <<Benchmark Plot for backward2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
 # Benchmark function
 plot_benchmark(run_benchmark(backward2))
+
 @
 \label{fig7}
 \end{figure}
@@ -591,6 +600,7 @@ gamma2 <- function(haps, hap, error = 0.1) {
 
   return(gamma_matrix)
 }
+
 @
 
 <<unit test for gamma2>>=
@@ -611,6 +621,7 @@ test_that("gamma and gamma2 produce the same outputs", {
   # Check if the outputs are equal
   expect_equal(gamma_matrix, gamma_matrix2, tolerance = 1e-5)
 })
+
 @
 \begin{enumerate}
 \item Based on the previous discussion, executing \texttt{forward2} and \texttt{backward2} each costs $\mathcal{O}(K \cdot T)$. Computing the normalization factor (norm_factor) involves summing over one column of the \texttt{alpha} matrix, which is $\mathcal{O}(K)$. The nested loop structure for updating the \texttt{gamma} matrix involves iterating over $T$ and each $K$. Within the inner loop, the operation to calculate each entry is $\mathcal{O}(1)$. Therefore, the complexity of updating the gamma_matrix is $\mathcal{O}(K \cdot T)$. With 3 operations in $\mathcal{O}(K \cdot T)$, the overall time complexity of \texttt{gamma2} is $\mathcal{O}(K \cdot T)$.
@@ -624,6 +635,7 @@ Figures \ref{fig8} and \ref{fig9} below show that the empirical time complexity 
 <<Benchmark Plot for backward2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
 # Benchmark function
 plot_benchmark(run_benchmark(gamma))
+
 @
 \label{fig8}
 \end{figure}
@@ -634,14 +646,61 @@ plot_benchmark(run_benchmark(gamma))
 <<Benchmark Plot for gamma2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
 # Benchmark function
 plot_benchmark(run_benchmark(gamma2))
+
 @
 \label{fig9}
 \end{figure}
 
 \newpage
-<<load gene data, echo=F>>=
+<<Painting first 5 target haplotypes>>=
+# Extract the first 5 target haplotypes
+first_5_haps <- samples_raw[1:5, ]
 
+paint_and_sum <- function(target_hap, ref_panel) {
+  gamma_results <- gamma2(ref_panel, target_hap, error = 0.1)
+
+  # Sum contributions from YRI and CEU haplotypes
+  yri_sum <- rowSums(gamma_results[grepl("YRI", rownames(ref_panel)), ])
+  ceu_sum <- rowSums(gamma_results[grepl("CEU", rownames(ref_panel)), ])
+
+  return(list(YRI = yri_sum, CEU = ceu_sum))
+}
+
+# Apply function to first 5 target haplotypes (parallelized)
+first_5_painted <- mclapply(1:nrow(first_5_haps), function(i) {
+  paint_and_sum(first_5_haps[i, ], refpanel_raw)
+}, mc.cores = detectCores())
+
+compile_results_matrix <- function(painted_results) {
+  results_matrix <- matrix(nrow = length(painted_results), ncol = 3)
+  colnames(results_matrix) <- c("Sum_YRI", "Sum_CEU", "Percentage_YRI")
+  
+  # Loop through each list of results and calculate the sum of YRI, CEU,
+  # percentage of YRI
+  for (i in seq_along(painted_results)) {
+    sum_yri <- sum(painted_results[[i]]$YRI)
+    sum_ceu <- sum(painted_results[[i]]$CEU)
+    total_sum <- sum_yri + sum_ceu
+    percentage_yri <- (sum_yri / total_sum) * 100
+  
+    results_matrix[i, ] <- c(sum_yri, sum_ceu, percentage_yri)
+  }
+  
+  colnames(results_matrix) <- c("Sum YRI", "Sum CEU", 
+                                "Percentage of YRI in Total")
+  return(results_matrix)
+}
+
+painted <- compile_results_matrix(first_5_painted)
 @
 
+Table \ref{tab2} below shows that among the first 5 target haplotypes, haplotypes 2 and 5 show a high contribution of YRI haplotypes. Target haplotype 5 suggests an entirely African genetic background over the investigated chromosome.
+<<Make Table for painted first 5 haplotypes, results='asis', echo=FALSE>>=
+print(xtable(painted, digits = 2, align = rep("c", 3)),
+             caption = "Sums and Proportion of YRI and CEU Ancestry in the first 5 Target Haplotypes",
+             label = "tab2"),
+      caption.placement = "top",
+      size="footnotesize")
+@
 \end{document}
 
