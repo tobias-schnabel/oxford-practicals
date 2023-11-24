@@ -37,6 +37,11 @@ houseprices_raw <- suppressMessages(read_csv("Average-prices-2023-07.csv"))
 # Load second data set
 inflation_raw <- suppressMessages(read_csv("series-181023_cumulative.csv"))
 
+# Load third data set
+refpanel_raw <- suppressMessages(read.table("refpanel.txt"))
+# Load fourth data set
+samples_raw <- suppressMessages(read.table("samples.txt"))
+
 @
 
 Figure \ref{fig1} below displays the evolution of House Prices in England over time.
@@ -612,13 +617,31 @@ test_that("gamma and gamma2 produce the same outputs", {
 \item By the same logic, executing \texttt{forward} and \texttt{backward} each costs $\mathcal{O}(K^2 \cdot T)$, which dominates the other terms that contribute to the time complexity of \texttt{gamma}, which as an overall time complexity of $\mathcal{O}(K^2 \cdot T)$
 \end{enumerate}
 
+Figures \ref{fig8} and \ref{fig9} below show that the empirical time complexity of \texttt{gamma} and \texttt{gamma2} indeed matches the reasoning laid out above.
+\begin{figure}[h!]
+\centering
+\caption{Benchmark Results for \texttt{gamma} Function}
+<<Benchmark Plot for backward2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
+# Benchmark function
+plot_benchmark(run_benchmark(gamma))
+@
+\label{fig8}
+\end{figure}
 
+\begin{figure}[h!]
+\centering
+\caption{Benchmark Results for \texttt{gamma2} Function}
+<<Benchmark Plot for gamma2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
+# Benchmark function
+plot_benchmark(run_benchmark(gamma2))
+@
+\label{fig9}
+\end{figure}
 
-<<empirical complexity of gamma and gamma2>>=
+\newpage
+<<load gene data, echo=F>>=
 
 @
-
-
 
 \end{document}
 
