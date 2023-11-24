@@ -575,7 +575,7 @@ plot_benchmark(run_benchmark(backward2))
 \label{fig7}
 \end{figure}
 
-\subsection{Implementation of \textt{gamma2} Function}
+\subsection{Implementation of \texttt{gamma2} Function}
 <<gamma2 implementation>>=
 gamma2 <- function(haps, hap, error = 0.1) {
   K <- nrow(haps)
@@ -623,16 +623,16 @@ test_that("gamma and gamma2 produce the same outputs", {
 })
 
 @
-\begin{enumerate}
-\item Based on the previous discussion, executing \texttt{forward2} and \texttt{backward2} each costs $\mathcal{O}(K \cdot T)$. Computing the normalization factor (norm_factor) involves summing over one column of the \texttt{alpha} matrix, which is $\mathcal{O}(K)$. The nested loop structure for updating the \texttt{gamma} matrix involves iterating over $T$ and each $K$. Within the inner loop, the operation to calculate each entry is $\mathcal{O}(1)$. Therefore, the complexity of updating the gamma_matrix is $\mathcal{O}(K \cdot T)$. With 3 operations in $\mathcal{O}(K \cdot T)$, the overall time complexity of \texttt{gamma2} is $\mathcal{O}(K \cdot T)$.
-\item By the same logic, executing \texttt{forward} and \texttt{backward} each costs $\mathcal{O}(K^2 \cdot T)$, which dominates the other terms that contribute to the time complexity of \texttt{gamma}, which as an overall time complexity of $\mathcal{O}(K^2 \cdot T)$
-\end{enumerate}
+% \begin{enumerate}
+% \item Based on the previous discussion, executing \texttt{forward2} and \texttt{backward2} each costs $\mathcal{O}(K \cdot T)$. Computing the normalization factor involves summing over one column of the \texttt{alpha} matrix, which is $\mathcal{O}(K)$. The nested loop structure for updating the \texttt{gamma} matrix involves iterating over $T$ and each $K$. Within the inner loop, the operation to calculate each entry is $\mathcal{O}(1)$. Therefore, the complexity of updating the gamma matrix is $\mathcal{O}(K \cdot T)$. With 3 operations in $\mathcal{O}(K \cdot T)$, the overall time complexity of \texttt{gamma2} is $\mathcal{O}(K \cdot T)$.
+% \item By the same logic, executing \texttt{forward} and \texttt{backward} each costs $\mathcal{O}(K^2 \cdot T)$, which dominates the other terms that contribute to the time complexity of \texttt{gamma}, which as an overall time complexity of $\mathcal{O}(K^2 \cdot T)$
+% \end{enumerate}
 
 Figures \ref{fig8} and \ref{fig9} below show that the empirical time complexity of \texttt{gamma} and \texttt{gamma2} indeed matches the reasoning laid out above.
 \begin{figure}[h!]
 \centering
 \caption{Benchmark Results for \texttt{gamma} Function}
-<<Benchmark Plot for backward2, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
+<<Benchmark Plot for gamma, echo = F,  fig = T,fig.width=10, fig.height=4, out.width='\\textwidth'>>=
 # Benchmark function
 plot_benchmark(run_benchmark(gamma))
 
@@ -692,15 +692,16 @@ compile_results_matrix <- function(painted_results) {
 }
 
 painted <- compile_results_matrix(first_5_painted)
+
 @
 
 Table \ref{tab2} below shows that among the first 5 target haplotypes, haplotypes 2 and 5 show a high contribution of YRI haplotypes. Target haplotype 5 suggests an entirely African genetic background over the investigated chromosome.
 <<Make Table for painted first 5 haplotypes, results='asis', echo=FALSE>>=
-print(xtable(painted, digits = 2, align = rep("c", 3)),
+print(xtable(painted, digits = 2, align = rep("c", 4)),
              caption = "Sums and Proportion of YRI and CEU Ancestry in the first 5 Target Haplotypes",
-             label = "tab2"),
-      caption.placement = "top",
-      size="footnotesize")
+             label = "tab2",
+      caption.placement = "top") #,size="footnotesize"
+
 @
 \end{document}
 
