@@ -313,32 +313,50 @@ gamma <- function(haps, hap, error = 0.1) {
     for (k in 1:K) {
       gamma_matrix[k, t] <- (alpha[k, t] * beta[k, t]) / norm_factor
     }
-
-  return(gamma_matrix)
   }
+  return(gamma_matrix)
 }
 
 @
 
 \subsection{Unit Test for \texttt{gamma} Function Implementation}
 <<unit test for gamma function>>=
-test_that("column sums of gamma matrix sum to 1", {
+# test_that("column sums of gamma matrix sum to 1", {
+#   set.seed(42)  # For reproducibility
+#   K <- 10  # Number of rows in haps
+#   T <- 15  # Number of columns in haps = length of hap
+#   e <- 0.1  # Error rate (= default value)
+# 
+#   # Create random haps and hap with 0 or 1 entries
+#   haps <- matrix(sample(0:1, K * T, replace = T), nrow = K, ncol = T)
+#   hap <- sample(0:1, T, replace = T)
+# 
+#   # Run the gamma function
+#   gamma_matrix <- gamma(haps, hap, error = e)
+# 
+#    # Check total sum
+#   total_sum <- sum(gamma_matrix)
+#   expect_equal(total_sum, 1, tolerance = 1e-5)
+# })
+test_that("column sums of gamma matrix all equal 1", {
   set.seed(42)  # For reproducibility
   K <- 10  # Number of rows in haps
   T <- 15  # Number of columns in haps = length of hap
   e <- 0.1  # Error rate (= default value)
 
   # Create random haps and hap with 0 or 1 entries
-  haps <- matrix(sample(0:1, K * T, replace = T), nrow = K, ncol = T)
-  hap <- sample(0:1, T, replace = T)
+  haps <- matrix(sample(0:1, K * T, replace = TRUE), nrow = K, ncol = T)
+  hap <- sample(0:1, T, replace = TRUE)
 
   # Run the gamma function
   gamma_matrix <- gamma(haps, hap, error = e)
 
-   # Check total sum
-  total_sum <- sum(gamma_matrix)
-  expect_equal(total_sum, 1, tolerance = 1e-5)
+  # Check that each column sum is close to 1
+  for (t in 1:T) {
+    expect_equal(sum(gamma_matrix[, t]), 1, tolerance = 1e-5)
+  }
 })
+
 @
 
 \subsection{Computational Complexity of \texttt{forward} and \texttt{backward} Algorithms}
@@ -542,6 +560,65 @@ plot_benchmark(run_benchmark(backward2))
 @
 \label{fig7}
 \end{figure}
+
+\subsection{Implementation of \textt{gamma2} Function}
+<<gamma2 implementation>>=
+gamma2 <- function(haps, hap, error = 0.1) {
+  K <- nrow(haps)
+  T <- ncol(haps)
+
+  # Compute alpha and beta matrices using forward2 and backward2
+  alpha <- forward2(haps, hap, error)
+  beta <- backward2(haps, hap, error)
+
+  # Compute normalization factor (denominator)
+  norm_factor <- sum(alpha[, T])
+
+  # Initialize gamma matrix
+  gamma_matrix <- matrix(0, nrow = K, ncol = T)
+
+  # Update gamma values (eq. 8)
+  for (t in 1:T) {
+    for (k in 1:K) {
+      gamma_matrix[k, t] <- (alpha[k, t] * beta[k, t]) / norm_factor
+    }
+  }
+
+  return(gamma_matrix)
+}
+@
+
+<<unit test for gamma2>>=
+test_that("gamma and gamma2 produce the same outputs", {
+  set.seed(42)  # For reproducibility
+  K <- 10  # Number of rows in haps
+  T <- 15  # Number of columns in haps = length of hap
+  e <- 0.1  # Error rate (= default value)
+
+  # Generate example data
+  haps <- matrix(sample(0:1, K * T, replace = TRUE), nrow = K)
+  hap <- sample(0:1, T, replace = TRUE)
+
+  # Run both functions
+  gamma_matrix <- gamma(haps, hap, e)
+  gamma_matrix2 <- gamma2(haps, hap, e)
+
+  # Check if the outputs are equal
+  expect_equal(gamma_matrix, gamma_matrix2, tolerance = 1e-5)
+})
+@
+\begin{enumerate}
+\item Based on the previous discussion, executing \texttt{forward2} and \texttt{backward2} each costs $\mathcal{O}(K \cdot T)$. Computing the normalization factor (norm_factor) involves summing over one column of the \texttt{alpha} matrix, which is $\mathcal{O}(K)$. The nested loop structure for updating the \texttt{gamma} matrix involves iterating over $T$ and each $K$. Within the inner loop, the operation to calculate each entry is $\mathcal{O}(1)$. Therefore, the complexity of updating the gamma_matrix is $\mathcal{O}(K \cdot T)$. With 3 operations in $\mathcal{O}(K \cdot T)$, the overall time complexity of \texttt{gamma2} is $\mathcal{O}(K \cdot T)$.
+\item By the same logic, executing \texttt{forward} and \texttt{backward} each costs $\mathcal{O}(K^2 \cdot T)$, which dominates the other terms that contribute to the time complexity of \texttt{gamma}, which as an overall time complexity of $\mathcal{O}(K^2 \cdot T)$
+\end{enumerate}
+
+
+
+<<empirical complexity of gamma and gamma2>>=
+
+@
+
+
 
 \end{document}
 
