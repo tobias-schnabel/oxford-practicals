@@ -11,8 +11,8 @@
 
 
 \maketitle
-
-\subsection{British House Prices}
+\section{British House Prices}
+\subsection{Exploratory Data Analysis}
 <<setup, echo = F>>=
 
 # Define needed packages
@@ -326,23 +326,6 @@ gamma <- function(haps, hap, error = 0.1) {
 
 \subsection{Unit Test for \texttt{gamma} Function Implementation}
 <<unit test for gamma function>>=
-# test_that("column sums of gamma matrix sum to 1", {
-#   set.seed(42)  # For reproducibility
-#   K <- 10  # Number of rows in haps
-#   T <- 15  # Number of columns in haps = length of hap
-#   e <- 0.1  # Error rate (= default value)
-# 
-#   # Create random haps and hap with 0 or 1 entries
-#   haps <- matrix(sample(0:1, K * T, replace = T), nrow = K, ncol = T)
-#   hap <- sample(0:1, T, replace = T)
-# 
-#   # Run the gamma function
-#   gamma_matrix <- gamma(haps, hap, error = e)
-# 
-#    # Check total sum
-#   total_sum <- sum(gamma_matrix)
-#   expect_equal(total_sum, 1, tolerance = 1e-5)
-# })
 test_that("column sums of gamma matrix all equal 1", {
   set.seed(42)  # For reproducibility
   K <- 10  # Number of rows in haps
@@ -370,7 +353,7 @@ test_that("column sums of gamma matrix all equal 1", {
 \item The \texttt{backward} algorithm has an identical time complexity of $\mathcal{O}(K^2 \cdot T)$ as it performs the same iterations, just in a different oder.
 \end{enumerate}
 
-Figures \ref{fig4} and \ref{fig5} below show benchmark results for both the forward and backward algorithms, executed $10$ times each for all $K \times T$ with $K, L ={5, \ldots, 20}$. The fitted lines for the median execution time for each value of $K$ and $T$, respectively, look polynomial in $K$ and linear in $T$. 
+Figures \ref{fig4} and \ref{fig5} below show benchmark results for both the forward and backward algorithms, executed $10$ times each for all $K \times T$ with $K, L ={5, \ldots, 20}$. The fitted lines for the median execution time for each value of $K$ and $T$, respectively, look quadratic in $K$ and linear in $T$. 
 <<Benchmarking and Plotting Functions, echo = F>>=
 # Standardized Benchmarking Function
 run_benchmark <- function(algo_func) {
@@ -530,10 +513,13 @@ backward2 <- function(haps, hap, error = 0.1) {
   # Induction step (eq. 14)
   for (t in (T-1):1) {
     # Calculate the phi term which is constant for all k (eq. 13)
-    phi <- sum(beta[, t+1] * sapply(1:K, function(i) emission_probability(hap[t+1], haps[i, t+1], error))) * (1 - 0.999) / K
+    phi <- sum(beta[, t+1] * 
+                 sapply(1:K, function(i) emission_probability(hap[t+1],
+                              haps[i, t+1], error))) * (1 - 0.999) / K
     
-    for (k in 1:K) { # Update beta for each k using the phi term and the specific transition and emission probabilities for k (eq. 14)
-      beta[k, t] <- phi + 0.999 * beta[k, t+1] * emission_probability(hap[t+1], haps[k, t+1], error)
+    for (k in 1:K) { # (eq. 14)
+      beta[k, t] <- phi + 0.999 * beta[k, t+1] * 
+        emission_probability(hap[t+1], haps[k, t+1], error)
     }
   }
   
@@ -697,9 +683,9 @@ painted <- compile_results_matrix(first_5_painted)
 
 Table \ref{tab2} below shows that among the first 5 target haplotypes, haplotypes 2 and 5 show a high contribution of YRI haplotypes. Target haplotype 5 suggests an entirely African genetic background over the investigated chromosome.
 <<Make Table for painted first 5 haplotypes, results='asis', echo=FALSE>>=
-print(xtable(painted, digits = 2, align = rep("c", 4)),
+print(xtable(painted, digits = 2, align = rep("c", 4),
              caption = "Sums and Proportion of YRI and CEU Ancestry in the first 5 Target Haplotypes",
-             label = "tab2",
+             label = "tab2"),
       caption.placement = "top") #,size="footnotesize"
 
 @
