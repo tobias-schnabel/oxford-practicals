@@ -133,3 +133,38 @@ head(aids)
 
 
 aids$qrt <- as.factor(aids$qrt) plot(cases ~ date, data=aids)
+
+# a
+# log link: models the log of the expected value of the response variable as a 
+# linear combination of predictors
+
+# Square-root Link: models the square root of the expected value of the response
+# variable as a linear function of predictors
+
+# b
+model_log <- glm(cases ~ ., family=poisson(link="log"), data=aids)
+model_sqrt <- glm(cases ~ ., family=poisson(link="sqrt"), data=aids)
+summary(model_log)
+summary(model_sqrt)
+# sqrt model gives lower AIC and residual deviance = better fit
+# c qrt is not stat. sig. different from 0
+# The negative sign suggests a slight decrease in the square root of the number 
+# of cases as the quarter number increases, but this is not statistically significant.
+
+# date coeff. is highly stat. sig., indicates that for each unit increase in the 
+# date, the expected number of AIDS cases increases by 
+# approximately 3.34, holding other variables constant
+# intercept does not have meaningful interpretation
+
+# d
+std_residuals <- rstandard(model_sqrt)
+plot(std_residuals)
+abline(h = c(-2, 2), col = "red")
+# we have a substantial number of residuals outside the [-2,2] range, indicating
+# potential misfit
+chi_sq <- model_sqrt$deviance
+df <- model_sqrt$df.residual
+pchisq(chi_sq, df, lower.tail = FALSE)
+# very low p-value (0), indicating bad fit too
+plot(model_sqrt, which = c(4, 5))
+# obs 29, 42, 44 are esp. high-influence
