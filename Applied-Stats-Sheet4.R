@@ -11,6 +11,9 @@ bf <- data.frame(
   gender = c('M', 'M', 'M', 'F', 'F', 'F'),
   feed = c('Bottle', 'Suppl', 'Breast', 'Bottle', 'Suppl', 'Breast')
 )
+# Fit the model
+model <- glm(cbind(disease, healthy) ~ gender + feed, family = binomial, data = bf)
+summary_model <- summary(model)
 
 # Calculate odds for each subgroup
 bf$odds <- bf$disease / bf$healthy
@@ -19,9 +22,7 @@ bf$odds <- bf$disease / bf$healthy
 lor_breast_bottle <- log(bf$odds[bf$feed == 'Breast'] / bf$odds[bf$feed == 'Bottle'])
 
 # Step 3: Calculate the 95% CI for LOR
-# Fit the model
-model <- glm(cbind(disease, healthy) ~ gender + feed, family = binomial, data = bf)
-summary_model <- summary(model)
+
 
 # Extract the coefficients for breast and bottle feed
 coef_breast <- summary_model$coefficients['feedBreast', ]
@@ -132,7 +133,8 @@ aids <- read.csv("http://www.stats.ox.ac.uk/~laws/SB1/data/aids.csv")
 head(aids)
 
 
-aids$qrt <- as.factor(aids$qrt) plot(cases ~ date, data=aids)
+aids$qrt <- as.factor(aids$qrt) 
+plot(cases ~ date, data=aids)
 
 # a
 # log link: models the log of the expected value of the response variable as a 
@@ -147,9 +149,14 @@ model_sqrt <- glm(cases ~ ., family=poisson(link="sqrt"), data=aids)
 summary(model_log)
 summary(model_sqrt)
 # sqrt model gives lower AIC and residual deviance = better fit
-# c qrt is not stat. sig. different from 0
-# The negative sign suggests a slight decrease in the square root of the number 
-# of cases as the quarter number increases, but this is not statistically significant.
+# c fit restricted model
+model_sqrt_rest <- glm(cases ~ date, family=poisson(link="log"), data=aids)
+DP <- deviance(model_sqrt)
+DR <- deviance(model_sqrt_rest)
+LRT <- DR - DP
+p <- model_sqrt$rank
+r <- model_sqrt_rest$rank
+1-pchisq(LRT, p-r) # reject Null
 
 # date coeff. is highly stat. sig., indicates that for each unit increase in the 
 # date, the expected number of AIDS cases increases by 
