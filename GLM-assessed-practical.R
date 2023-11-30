@@ -8,6 +8,7 @@ library(kableExtra)
 library(sandwich) # for robust Standard Errors
 library(MASS) # for stepwise AIC and BIC selection
 library(ggfortify)
+library(rsq)
 
 ## Set Paths for tables and figures
 root = "/Users/ts/Git/Practicals"
@@ -189,6 +190,23 @@ data_num <- data_raw %>% mutate(
 # Refit full model
 baseline_num <- glm(approved ~ ., data = data_num, family = binomial(link = "logit"))
 
+# Diagnostic plots
+baseline_fact_1 <- autoplot(baseline, which = 1)
+baseline_fact_2 <- autoplot(baseline, which = 2)
+baseline_fact_3 <- autoplot(baseline, which = 5)
+baseline_fact_4 <- autoplot(baseline, which = 6)
+
+baseline_num_1 <- autoplot(baseline_num, which = 1)
+baseline_num_2 <- autoplot(baseline_num, which = 2)
+baseline_num_3 <- autoplot(baseline_num, which = 5)
+baseline_num_4 <- autoplot(baseline_num, which = 6)
+
+# Arrange side by side
+diag_plot_baseline <- baseline_fact_1 + baseline_num_1 + baseline_fact_2 + 
+  baseline_num_2 +
+  baseline_fact_3 + baseline_num_3 + baseline_fact_4 + baseline_num_4 +
+  plot_layout(ncol = 2, nrow = 4)
+
 # stepwise AIC
 step_aic <- stepAIC(baseline, direction = "backward")
 # AIC deteriorates when we drop predictors
@@ -239,8 +257,28 @@ which(bic == min(bic))
 
 step_interact <- step(model_self_all, direction = "both")
 model_interact <- glm(approved ~ self + hir + odir + lvr + mcs + single + white + 
-                        uria + self:odir + self:white + self:uria, 
+                        self*odir + self*white + self*uria + uria, 
                       family = binomial, data = data)
+
+anova(model_self_odir, model_interact, test = "Chisq")
+anova(model_interact, test = "Chisq")
+
+# Diagnostic plots
+model_self_odir_1 <- autoplot(model_self_odir, which = 1)
+model_self_odir_2 <- autoplot(model_self_odir, which = 2)
+model_self_odir_3 <- autoplot(model_self_odir, which = 5)
+model_self_odir_4 <- autoplot(model_self_odir, which = 6)
+
+model_interact_1 <- autoplot(model_interact, which = 1)
+model_interact_2 <- autoplot(model_interact, which = 2)
+model_interact_3 <- autoplot(model_interact, which = 5)
+model_interact_4 <- autoplot(model_interact, which = 6)
+
+# Arrange side by side
+diag_plot_interaction <- model_self_odir_1 + model_interact_1 + model_self_odir_2 + 
+  model_interact_2 +
+  model_self_odir_3 + model_interact_3 + model_self_odir_4 + model_interact_4 +
+  plot_layout(ncol = 2, nrow = 4)
 
 ### Experiments
 data_new <- data %>%
@@ -261,14 +299,14 @@ print.xtable(sumtable, type = "latex", file = "sumstats.tex",
 stargazer(baseline, baseline_num, title="Estimation Results for Baseline Model", 
           type="latex", 
           align=TRUE, 
-          out = "regtable.tex",
+          out = "baseline.tex",
           column.labels=c("MCS as factor", "MCS as numerical"), 
           dep.var.caption="", 
           dep.var.labels.include = FALSE, 
           no.space=TRUE, 
           single.row=TRUE, 
           header=FALSE, 
-          digits=3)
+          digits=3, notes = "SE in Parentheses")
 
 stargazer(model_self_odir, model_interact, title="Estimation Results for Interaction Models", 
           type="latex", 
@@ -280,7 +318,7 @@ stargazer(model_self_odir, model_interact, title="Estimation Results for Interac
           no.space=TRUE, 
           single.row=TRUE, 
           header=FALSE, 
-          digits=3)
+          digits=3, notes = "SE in Parentheses")
 setwd(root)
 
 # figures
