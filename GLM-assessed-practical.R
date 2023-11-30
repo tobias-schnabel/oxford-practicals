@@ -178,6 +178,70 @@ plot_lowdebt <- ggplot(data, aes(x = low_debt, fill = approved)) +
 # Fit full model
 baseline <- glm(approved ~ ., data = data, family = binomial(link = "logit"))
 
+# Check how to cast mcs
+data_num <- data_raw %>% mutate(
+  approved = as.factor(approved),
+  self = as.factor(self),
+  single = as.factor(single),
+  white = as.factor(white),
+)
+
+# Refit full model
+baseline_num <- glm(approved ~ ., data = data_num, family = binomial(link = "logit"))
+
+# stepwise AIC
+step_aic <- stepAIC(baseline, direction = "backward")
+# AIC deteriorates when we drop predictors
+
+# BIC
+step_bic <- step(baseline, direction = "backward", k = log(nrow(data)))
+# BIC also deteriorates
+
+# Interaction terms
+# Interaction between 'self' and 'white', including all other predictors
+model_self_white <- glm(approved ~ self * white + hir + odir + lvr + mcs + 
+                          single + uria, family = binomial, data = data)
+
+# Interaction between 'self' and 'single', including all other predictors
+model_self_single <- glm(approved ~ self * single + hir + odir + lvr + mcs 
+                         + white + uria, family = binomial, data = data)
+
+# Interaction between 'self' and 'lvr', including all other predictors
+model_self_lvr <- glm(approved ~ self * lvr + hir + odir + mcs + single + white 
+                      + uria, family = binomial, data = data)
+
+# Interaction between 'self' and 'odir', including all other predictors
+model_self_odir <- glm(approved ~ self * odir + hir + lvr + mcs + single + 
+                         white + uria, family = binomial, data = data)
+
+# Interaction between 'self' and 'hir', including all other predictors
+model_self_hir <- glm(approved ~ self * hir + odir + lvr + mcs + single + white +
+                        uria, family = binomial, data = data)
+
+# Interaction between 'self' and 'hir', including all other predictors
+model_self_hir <- glm(approved ~ self * uria + odir + lvr + mcs + single + white +
+                        hir, family = binomial, data = data)
+
+# Interaction between 'self' and 'hir', including all other predictors
+model_self_hir <- glm(approved ~ self * mcs + odir + lvr + uria + single + white +
+                        hir, family = binomial, data = data)
+
+# All possible interactions on self
+model_self_all <- glm(approved ~ self * ., family = binomial, data = data)
+
+model_list <- mget(grep("^model_self_*", ls(), value = TRUE))
+
+#compare ICs:
+aic <- round(sapply(model_list, AIC), 2)
+bic <- round(sapply(model_list, BIC), 2)
+which(aic == min(aic))
+which(bic == min(bic))
+
+step_interact <- step(model_self_all, direction = "both")
+model_interact <- glm(approved ~ self + hir + odir + lvr + mcs + single + white + 
+                        uria + self:odir + self:white + self:uria, 
+                      family = binomial, data = data)
+
 ### Experiments
 data_new <- data %>%
   mutate(low_debt = if_else(odir < 0.2, 1, 0)) %>% 
@@ -194,9 +258,29 @@ print.xtable(sumtable, type = "latex", file = "sumstats.tex",
              label = "tab1", caption.placement = "top", 
              floating = T, table.placement = "H")
 
-print(xtable(baseline, caption = "Baseline Model"), 
-      file = "baseline.tex", digits = 3, label = "baseline",
-      caption.placement = "top", table.placement = "H", floating = T)
+stargazer(baseline, baseline_num, title="Estimation Results for Baseline Model", 
+          type="latex", 
+          align=TRUE, 
+          out = "regtable.tex",
+          column.labels=c("MCS as factor", "MCS as numerical"), 
+          dep.var.caption="", 
+          dep.var.labels.include = FALSE, 
+          no.space=TRUE, 
+          single.row=TRUE, 
+          header=FALSE, 
+          digits=3)
+
+stargazer(model_self_odir, model_interact, title="Estimation Results for Interaction Models", 
+          type="latex", 
+          align=TRUE, 
+          out = "regtable.tex",
+          column.labels=c("self * odir", "self * odir, self * white, self * uria"), 
+          dep.var.caption="", 
+          dep.var.labels.include = FALSE, 
+          no.space=TRUE, 
+          single.row=TRUE, 
+          header=FALSE, 
+          digits=3)
 setwd(root)
 
 # figures
