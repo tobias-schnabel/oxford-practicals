@@ -58,7 +58,7 @@ sumstats <- rbind(numerical_summary, factor_summary)
 colnames(sumstats) <- c("Mean", "Median", "SD", "Min", "Max")
 
 # Make table
-sumtable <- xtable(sumstats, caption = "Summary Statistics")
+sumtable <- xtable(sumstats, caption = "Summary Statistics", label = "tab1")
 
 ## EDA plots
 # plot colors
@@ -293,7 +293,7 @@ baseline_new <- glm(approved ~ ., data = data_new, family = binomial(link = "log
 setwd(tab)
 print.xtable(sumtable, type = "latex", file = "sumstats.tex", 
              include.rownames = TRUE, digits = 2, align = c("l", rep("c", 4)),
-             label = "tab1", caption.placement = "top", 
+             caption.placement = "top", 
              floating = T, table.placement = "H")
 
 stargazer(baseline, baseline_num, title="Estimation Results for Baseline Model", 
