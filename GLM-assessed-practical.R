@@ -170,8 +170,99 @@ plot_white <- ggplot(data, aes(x = approved, fill = white)) +
 
 mosaicplots <- (plot_mcs | plot_self | plot_single | plot_white)
 
+## Use Bar prop plots instead
+# function to get proportions
+data_prop <- function(cat) {
+  data %>%
+  group_by(!!sym(cat), approved) %>%
+  summarise(Count = n(), .groups = 'drop') %>%
+  mutate(Fraction = Count / sum(Count))
+}
+
+prop_plot_mcs <- ggplot(data_prop('mcs'), aes(x = mcs, y = Fraction, fill = as.factor(approved))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = plotcolors[1:2]) +
+  labs(x = "MCS", y = "Percentage", fill = "Approved") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+prop_plot_self <- ggplot(data_prop('self'), aes(x = self, y = Fraction, fill = as.factor(approved))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = plotcolors[3:4]) +
+  labs(x = "Self", y = "Percentage", fill = "Approved") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+prop_plot_single <- ggplot(data_prop('single'), aes(x = single, y = Fraction, fill = as.factor(approved))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = plotcolors[5:6]) +
+  labs(x = "Single", y = "Percentage", fill = "Approved") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+prop_plot_white <- ggplot(data_prop('white'), aes(x = white, y = Fraction, fill = as.factor(approved))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = plotcolors[7:8]) +
+  labs(x = "White", y = "Percentage", fill = "Approved") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+prop_plots <- (prop_plot_mcs | prop_plot_self | prop_plot_single | prop_plot_white)
+
 # Decile plots
- 
+create_decile_plot <- function(data, continuous_var) {
+  # Convert 'approved' to numeric
+  data <- data %>%
+    mutate(
+      ApprovedNumeric = as.numeric(as.character(approved)),
+      Decile = ntile(!!sym(continuous_var), 10)
+    )
+  
+  # Compute the mean of 'ApprovedNumeric' for each decile
+  decile_means <- data %>%
+    group_by(Decile) %>%
+    summarise(MeanApproved = mean(ApprovedNumeric, na.rm = TRUE), .groups = 'drop')
+  
+  # Plot
+  ggplot(decile_means, aes(x = as.factor(Decile), y = MeanApproved)) +
+    geom_bar(stat = "identity", fill = "skyblue", width = 0.7) +
+    scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+    labs(x = paste(continuous_var, "Decile"), y = "Mean Approved Rate") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+# Apply the function to the 'hir' variable
+plot_hir <- create_decile_plot(data, "hir")
+
+barplot(tapply(as.numeric(data$approved) -1, findInterval(data$uria, quantile(data$uria, seq(0.1, 0.9, 0.1))) + 1, mean), 
+        beside = T, col = c("skyblue", "steelblue"))
+barplot(tapply(as.numeric(data$approved) -1, findInterval(data$odir, quantile(data$odir, seq(0.1, 0.9, 0.1))) + 1, mean), 
+        beside = T, col = c("skyblue", "steelblue"))
+
+data$approved_numeric <- as.numeric(as.character(data$approved))
+
+# Calculate the decile groups for 'odir'
+odir_deciles <- findInterval(data$odir, quantile(data$odir, seq(0.1, 0.9, 0.1))) + 1
+
+# Create a new data frame for plotting
+plot_data <- data %>%
+  mutate(Decile = odir_deciles) %>%
+  group_by(Decile) %>%
+  summarise(MeanApproved = mean(approved_numeric, na.rm = TRUE)) %>%
+  ungroup()
+
+# Plot using ggplot2
+ggplot(plot_data, aes(x = as.factor(Decile), y = MeanApproved, fill = as.factor(Decile))) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  scale_fill_manual(values = ggthemes::tableau_color_pal()(10)) +
+  labs(x = "ODIR Decile", y = "Mean Approved") +
+  theme_minimal() +
+  theme(legend.position = "none")
 
 # Fit full model
 baseline <- glm(approved ~ ., data = data, family = binomial(link = "logit"))
@@ -270,6 +361,7 @@ setwd(root)
 setwd(fig)
 ggsave(plot = boxplots, "boxplots.png", width=8, height=6, units = "cm")
 ggsave(plot = mosaicplots, "mosaicplots.png", width=8, height=6, units = "cm")
+ggsave(plot = prop_plots, "prop-plots.png", width=8, height=6, units = "cm")
 ggsave(plot = violinplots, "violinplots.png", width=8, height=6, units = "cm")
 setwd(root)
 
