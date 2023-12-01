@@ -359,10 +359,10 @@ setwd(root)
 
 # figures
 setwd(fig)
-ggsave(plot = boxplots, "boxplots.png", width=8, height=6, units = "cm")
-ggsave(plot = mosaicplots, "mosaicplots.png", width=8, height=6, units = "cm")
-ggsave(plot = prop_plots, "prop-plots.png", width=8, height=6, units = "cm")
-ggsave(plot = violinplots, "violinplots.png", width=8, height=6, units = "cm")
+ggsave(plot = boxplots, "boxplots.png")
+ggsave(plot = mosaicplots, "mosaicplots.png")
+ggsave(plot = prop_plots, "prop-plots.png")
+ggsave(plot = violinplots, "violinplots.png")
 setwd(root)
 
 
