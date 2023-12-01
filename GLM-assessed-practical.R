@@ -37,6 +37,8 @@ data <- data_raw %>%
     white = as.factor(white),
     mcs = factor(mcs, levels = 1:4)
   )
+
+attach(data)
 # Summary stats functions
 summary_stats <- function(x) {
   c(mean = mean(x, na.rm = TRUE), 
@@ -58,7 +60,7 @@ sumstats <- rbind(numerical_summary, factor_summary)
 colnames(sumstats) <- c("Mean", "Median", "SD", "Min", "Max")
 
 # Make table
-sumtable <- xtable(sumstats, caption = "Summary Statistics", label = "tab1")
+sumtable <- xtable(sumstats, caption = "Summary Statistics", label = "sumtable")
 
 ## EDA plots
 # plot colors
@@ -168,13 +170,8 @@ plot_white <- ggplot(data, aes(x = approved, fill = white)) +
 
 mosaicplots <- (plot_mcs | plot_self | plot_single | plot_white)
 
-plot_lowdebt <- ggplot(data, aes(x = low_debt, fill = approved)) +
-  geom_bar(position = "fill") +
-  scale_y_continuous(labels = scales::percent) +
-  scale_fill_manual(values = plotcolors[9:10]) +
-  theme_minimal() +
-  labs(x = "Approved", y = "Percentage") + 
-  theme(legend.position = "bottom")
+# Decile plots
+ 
 
 # Fit full model
 baseline <- glm(approved ~ ., data = data, family = binomial(link = "logit"))
@@ -190,23 +187,6 @@ data_num <- data_raw %>% mutate(
 # Refit full model
 baseline_num <- glm(approved ~ ., data = data_num, family = binomial(link = "logit"))
 
-# Diagnostic plots
-baseline_fact_1 <- autoplot(baseline, which = 1)
-baseline_fact_2 <- autoplot(baseline, which = 2)
-baseline_fact_3 <- autoplot(baseline, which = 5)
-baseline_fact_4 <- autoplot(baseline, which = 6)
-
-baseline_num_1 <- autoplot(baseline_num, which = 1)
-baseline_num_2 <- autoplot(baseline_num, which = 2)
-baseline_num_3 <- autoplot(baseline_num, which = 5)
-baseline_num_4 <- autoplot(baseline_num, which = 6)
-
-# Arrange side by side
-diag_plot_baseline <- baseline_fact_1 + baseline_num_1 + baseline_fact_2 + 
-  baseline_num_2 +
-  baseline_fact_3 + baseline_num_3 + baseline_fact_4 + baseline_num_4 +
-  plot_layout(ncol = 2, nrow = 4)
-
 # stepwise AIC
 step_aic <- stepAIC(baseline, direction = "backward")
 # AIC deteriorates when we drop predictors
@@ -216,69 +196,24 @@ step_bic <- step(baseline, direction = "backward", k = log(nrow(data)))
 # BIC also deteriorates
 
 # Interaction terms
-# Interaction between 'self' and 'white', including all other predictors
-model_self_white <- glm(approved ~ self * white + hir + odir + lvr + mcs + 
-                          single + uria, family = binomial, data = data)
+# fit maximally interacted model
+maximal <- glm(approved ~ self * ., family = binomial, data = data)
 
-# Interaction between 'self' and 'single', including all other predictors
-model_self_single <- glm(approved ~ self * single + hir + odir + lvr + mcs 
-                         + white + uria, family = binomial, data = data)
-
-# Interaction between 'self' and 'lvr', including all other predictors
-model_self_lvr <- glm(approved ~ self * lvr + hir + odir + mcs + single + white 
-                      + uria, family = binomial, data = data)
-
-# Interaction between 'self' and 'odir', including all other predictors
-model_self_odir <- glm(approved ~ self * odir + hir + lvr + mcs + single + 
-                         white + uria, family = binomial, data = data)
-
-# Interaction between 'self' and 'hir', including all other predictors
-model_self_hir <- glm(approved ~ self * hir + odir + lvr + mcs + single + white +
-                        uria, family = binomial, data = data)
-
-# Interaction between 'self' and 'hir', including all other predictors
-model_self_hir <- glm(approved ~ self * uria + odir + lvr + mcs + single + white +
-                        hir, family = binomial, data = data)
-
-# Interaction between 'self' and 'hir', including all other predictors
-model_self_hir <- glm(approved ~ self * mcs + odir + lvr + uria + single + white +
-                        hir, family = binomial, data = data)
-
-# All possible interactions on self
-model_self_all <- glm(approved ~ self * ., family = binomial, data = data)
-
-model_list <- mget(grep("^model_self_*", ls(), value = TRUE))
-
-#compare ICs:
-aic <- round(sapply(model_list, AIC), 2)
-bic <- round(sapply(model_list, BIC), 2)
-which(aic == min(aic))
-which(bic == min(bic))
-
-step_interact <- step(model_self_all, direction = "both")
-model_interact <- glm(approved ~ self + hir + odir + lvr + mcs + single + white + 
-                        self*odir + self*white + self*uria + uria, 
+step_interact <- stepAIC(maximal, direction = "backward")
+final <- glm(approved ~ uria + hir + odir + lvr + mcs + single + white + 
+                        self*odir + self*white + self*uria + self, 
                       family = binomial, data = data)
 
-anova(model_self_odir, model_interact, test = "Chisq")
-anova(model_interact, test = "Chisq")
+one_interact <- glm(approved ~ self + hir + odir + lvr + mcs + single + white + 
+                     self*odir + uria, 
+                   family = binomial, data = data)
 
-# Diagnostic plots
-model_self_odir_1 <- autoplot(model_self_odir, which = 1)
-model_self_odir_2 <- autoplot(model_self_odir, which = 2)
-model_self_odir_3 <- autoplot(model_self_odir, which = 5)
-model_self_odir_4 <- autoplot(model_self_odir, which = 6)
+LRT_selection <- anova(final, maximal, test = "Chisq")
+model_selection <- xtable(LRT_selection, caption = "Model Selection: LRT Results", label = "lrt-select")
+LRT_coefficients <- anova(final, test = "Chisq")
+model_coefs <- xtable(LRT_selection, caption = "Estimated Coefficients: LRT Results", label = "lrt-coefs")
 
-model_interact_1 <- autoplot(model_interact, which = 1)
-model_interact_2 <- autoplot(model_interact, which = 2)
-model_interact_3 <- autoplot(model_interact, which = 5)
-model_interact_4 <- autoplot(model_interact, which = 6)
 
-# Arrange side by side
-diag_plot_interaction <- model_self_odir_1 + model_interact_1 + model_self_odir_2 + 
-  model_interact_2 +
-  model_self_odir_3 + model_interact_3 + model_self_odir_4 + model_interact_4 +
-  plot_layout(ncol = 2, nrow = 4)
 
 ### Experiments
 data_new <- data %>%
@@ -293,6 +228,16 @@ baseline_new <- glm(approved ~ ., data = data_new, family = binomial(link = "log
 setwd(tab)
 print.xtable(sumtable, type = "latex", file = "sumstats.tex", 
              include.rownames = TRUE, digits = 2, align = c("l", rep("c", 4)),
+             caption.placement = "top", 
+             floating = T, table.placement = "H")
+
+print.xtable(model_selection, type = "latex", file = "selection.tex", 
+             include.rownames = TRUE, digits = 2, 
+             caption.placement = "top", 
+             floating = T, table.placement = "H")
+
+print.xtable(model_coefs, type = "latex", file = "coefs.tex", 
+             include.rownames = TRUE, digits = 2,
              caption.placement = "top", 
              floating = T, table.placement = "H")
 
@@ -323,9 +268,9 @@ setwd(root)
 
 # figures
 setwd(fig)
-ggsave(plot = boxplots, "boxplots.png")
-ggsave(plot = mosaicplots, "mosaicplots.png")
-ggsave(plot = violinplots, "violinplots.png")
+ggsave(plot = boxplots, "boxplots.png", width=8, height=6, units = "cm")
+ggsave(plot = mosaicplots, "mosaicplots.png", width=8, height=6, units = "cm")
+ggsave(plot = violinplots, "violinplots.png", width=8, height=6, units = "cm")
 setwd(root)
 
 
