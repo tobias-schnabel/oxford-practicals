@@ -340,14 +340,15 @@ self_odir_effect <- Effect(focal.predictors = c("self", "odir"), mod = final)
 # Plot the interaction effect
 plot(self_odir_effect, main = "Interaction Effect of Self and ODIR on Probability of Approval")
 
-# Compute all main effects and interactions
+# Compute all main and interaction effects
 all_effects <- allEffects(final)
+plot_list <- lapply(names(all_effects), function(name) {
+  # Shorten subplot titles
+  plot(all_effects[[name]], main = name)
+})
 
-# Plot all effects
-plot_list <- lapply(all_effects, plot)
-
-# Combine the plots into a grid (if they are not too many)
-do.call(grid.arrange, c(plot_list, ncol = 3))
+# Combine plots
+effects <- do.call(grid.arrange, c(plot_list, ncol = 3))
 
 #### Dispersion ####
 n <- nrow(data)
@@ -358,7 +359,7 @@ V_mu_hat <- mu_hat * (1 - mu_hat) # Variance function for binomial distribution
 
 phi_hat <- 1 / (n - p) * sum((y - mu_hat)^2 / V_mu_hat)
 phi_hat
-
+sqrt(phi_hat)
 
 #### Export ####
 # tables
@@ -416,5 +417,6 @@ ggsave(plot = mosaicplots, "mosaicplots.png")
 ggsave(plot = prop_plots, "prop-plots.png")
 ggsave(plot = violinplots, "violinplots.png")
 ggsave(plot = decile_plots, "decileplots.png")
+ggsave(plot = effects, "effects.png", dpi = 1000, height = 30, width = 30, units = "cm")
 setwd(root)
 
