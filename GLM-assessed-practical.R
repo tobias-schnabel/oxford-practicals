@@ -62,7 +62,7 @@ colnames(sumstats) <- c("Mean", "Median", "SD", "Min", "Max")
 # Make table
 sumtable <- xtable(sumstats, caption = "Summary Statistics", label = "sumtable")
 
-## EDA plots
+#### EDA plots ####
 # plot colors
 plotcolors <- ggthemes::tableau_color_pal()(10)
 # Continuous predictors, bivariate
@@ -214,56 +214,41 @@ prop_plot_white <- ggplot(data_prop('white'), aes(x = white, y = Fraction, fill 
 prop_plots <- (prop_plot_mcs | prop_plot_self | prop_plot_single | prop_plot_white)
 
 # Decile plots
-create_decile_plot <- function(data, continuous_var) {
-  # Convert 'approved' to numeric
-  data <- data %>%
-    mutate(
-      ApprovedNumeric = as.numeric(as.character(approved)),
-      Decile = ntile(!!sym(continuous_var), 10)
-    )
+plot_deciles <- function(var_name) {
+
+  var <- data[[var_name]]
   
-  # Compute the mean of 'ApprovedNumeric' for each decile
-  decile_means <- data %>%
-    group_by(Decile) %>%
-    summarise(MeanApproved = mean(ApprovedNumeric, na.rm = TRUE), .groups = 'drop')
+  # Calculate group-wise means, ensuring the max value is included in the intervals
+  breaks <- quantile(var, probs = seq(0, 1, by = 0.1), na.rm = TRUE, names = FALSE, type = 7)
+  breaks[length(breaks)] <- max(var, na.rm = TRUE)  # Ensure the maximum value is included
+  group_means <- tapply(as.numeric(data$approved) - 1, findInterval(var, breaks, rightmost.closed = TRUE), mean, na.rm = TRUE)
+  group_means <- na.omit(group_means)
   
-  # Plot
-  ggplot(decile_means, aes(x = as.factor(Decile), y = MeanApproved)) +
-    geom_bar(stat = "identity", fill = "skyblue", width = 0.7) +
-    scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
-    labs(x = paste(continuous_var, "Decile"), y = "Mean Approved Rate") +
+  # Convert to data frame for ggplot
+  plot_data <- data.frame(
+    Deciles = factor(names(group_means), levels = as.character(1:length(group_means))),
+    Mean = as.numeric(group_means)
+  )
+  
+  # plot
+  ggplot(plot_data, aes(x = Deciles, y = Mean, fill = factor(Deciles))) +
+    geom_bar(stat = "identity", show.legend = FALSE) +
+    scale_fill_manual(values = plotcolors[1:10]) +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    theme(legend.position = "none") +
+    ylim(0, 1) +
+    labs(x = var_name, y = "Mean", )
 }
 
-# Apply the function to the 'hir' variable
-plot_hir <- create_decile_plot(data, "hir")
+decile_hir <- plot_deciles('hir')
+decile_odir <- plot_deciles('odir')
+decile_lvr <- plot_deciles('lvr')
+decile_uria <- plot_deciles('uria')
 
-barplot(tapply(as.numeric(data$approved) -1, findInterval(data$uria, quantile(data$uria, seq(0.1, 0.9, 0.1))) + 1, mean), 
-        beside = T, col = c("skyblue", "steelblue"))
-barplot(tapply(as.numeric(data$approved) -1, findInterval(data$odir, quantile(data$odir, seq(0.1, 0.9, 0.1))) + 1, mean), 
-        beside = T, col = c("skyblue", "steelblue"))
+# Stack the plots vertically
+decile_plots <- decile_hir / decile_odir / decile_lvr / decile_uria
 
-data$approved_numeric <- as.numeric(as.character(data$approved))
-
-# Calculate the decile groups for 'odir'
-odir_deciles <- findInterval(data$odir, quantile(data$odir, seq(0.1, 0.9, 0.1))) + 1
-
-# Create a new data frame for plotting
-plot_data <- data %>%
-  mutate(Decile = odir_deciles) %>%
-  group_by(Decile) %>%
-  summarise(MeanApproved = mean(approved_numeric, na.rm = TRUE)) %>%
-  ungroup()
-
-# Plot using ggplot2
-ggplot(plot_data, aes(x = as.factor(Decile), y = MeanApproved, fill = as.factor(Decile))) +
-  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
-  scale_fill_manual(values = ggthemes::tableau_color_pal()(10)) +
-  labs(x = "ODIR Decile", y = "Mean Approved") +
-  theme_minimal() +
-  theme(legend.position = "none")
-
+#### MODEL BUILDING ####
 # Fit full model
 baseline <- glm(approved ~ ., data = data, family = binomial(link = "logit"))
 
@@ -278,6 +263,9 @@ data_num <- data_raw %>% mutate(
 # Refit full model
 baseline_num <- glm(approved ~ ., data = data_num, family = binomial(link = "logit"))
 
+# Compare models using LRT
+anova_cast <- anova(baseline_num, baseline, test="Chisq")
+mcs_table <- xtable(anova_cast, caption = "Model Selection: MCS Data Type", label = "lrt-mcs")
 # stepwise AIC
 step_aic <- stepAIC(baseline, direction = "backward")
 # AIC deteriorates when we drop predictors
@@ -295,10 +283,6 @@ final <- glm(approved ~ uria + hir + odir + lvr + mcs + single + white +
                         self*odir + self*white + self*uria + self, 
                       family = binomial, data = data)
 
-one_interact <- glm(approved ~ self + hir + odir + lvr + mcs + single + white + 
-                     self*odir + uria, 
-                   family = binomial, data = data)
-
 LRT_selection <- anova(final, maximal, test = "Chisq")
 model_selection <- xtable(LRT_selection, caption = "Model Selection: LRT Results", label = "lrt-select")
 LRT_coefficients <- anova(final, test = "Chisq")
@@ -306,15 +290,11 @@ model_coefs <- xtable(LRT_selection, caption = "Estimated Coefficients: LRT Resu
 
 
 
-### Experiments
-data_new <- data %>%
-  mutate(low_debt = if_else(odir < 0.2, 1, 0)) %>% 
-  dplyr::select(!odir)
+#### Diagnostics ####
+rsq.kl(final)
 
 
-baseline_new <- glm(approved ~ ., data = data_new, family = binomial(link = "logit"))
-
-### Export ###
+#### Export ####
 # tables
 setwd(tab)
 print.xtable(sumtable, type = "latex", file = "sumstats.tex", 
@@ -344,7 +324,7 @@ stargazer(baseline, baseline_num, title="Estimation Results for Baseline Model",
           header=FALSE, 
           digits=3, notes = "SE in Parentheses")
 
-stargazer(model_self_odir, model_interact, title="Estimation Results for Interaction Models", 
+stargazer(final, title="Estimation Results for Final Model", 
           type="latex", 
           align=TRUE, 
           out = "regtable.tex",
@@ -363,7 +343,6 @@ ggsave(plot = boxplots, "boxplots.png")
 ggsave(plot = mosaicplots, "mosaicplots.png")
 ggsave(plot = prop_plots, "prop-plots.png")
 ggsave(plot = violinplots, "violinplots.png")
+ggsave(plot = decile_plots, "decileplots.png")
 setwd(root)
-
-
 
