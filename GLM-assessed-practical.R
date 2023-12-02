@@ -9,6 +9,7 @@ library(sandwich) # for robust Standard Errors
 library(MASS) # for stepwise AIC and BIC selection
 library(ggfortify)
 library(rsq)
+library(effects)
 
 ## Set Paths for tables and figures
 root = "/Users/ts/Git/Practicals"
@@ -60,7 +61,7 @@ sumstats <- rbind(numerical_summary, factor_summary)
 colnames(sumstats) <- c("Mean", "Median", "SD", "Min", "Max")
 
 # Make table
-sumtable <- xtable(sumstats, caption = "Summary Statistics", label = "sumtable")
+sumtable <- xtable(sumstats, caption = "Summary Statistics")
 
 #### EDA plots ####
 # plot colors
@@ -265,7 +266,8 @@ baseline_num <- glm(approved ~ ., data = data_num, family = binomial(link = "log
 
 # Compare models using LRT
 anova_cast <- anova(baseline_num, baseline, test="Chisq")
-mcs_table <- xtable(anova_cast, caption = "Model Selection: MCS Data Type", label = "lrt-mcs")
+mcs_table <- xtable(anova_cast, caption = "Model Selection: MCS Data Type")
+
 # stepwise AIC
 step_aic <- stepAIC(baseline, direction = "backward")
 # AIC deteriorates when we drop predictors
@@ -284,10 +286,7 @@ final <- glm(approved ~ uria + hir + odir + lvr + mcs + single + white +
                       family = binomial, data = data)
 
 LRT_selection <- anova(final, maximal, test = "Chisq")
-model_selection <- xtable(LRT_selection, caption = "Model Selection: LRT Results", label = "lrt-select")
-LRT_coefficients <- anova(final, test = "Chisq")
-model_coefs <- xtable(LRT_selection, caption = "Estimated Coefficients: LRT Results", label = "lrt-coefs")
-
+model_selection <- xtable(LRT_selection, caption = "Model Selection: LRT Results")
 
 
 #### Diagnostics ####
@@ -307,10 +306,10 @@ print.xtable(model_selection, type = "latex", file = "selection.tex",
              caption.placement = "top", 
              floating = T, table.placement = "H")
 
-print.xtable(model_coefs, type = "latex", file = "coefs.tex", 
+print.xtable(mcs_table, type = "latex", file = "mcs.tex", 
              include.rownames = TRUE, digits = 2,
              caption.placement = "top", 
-             floating = T, table.placement = "H")
+             table.placement = "H")
 
 stargazer(baseline, baseline_num, title="Estimation Results for Baseline Model", 
           type="latex", 
@@ -324,11 +323,10 @@ stargazer(baseline, baseline_num, title="Estimation Results for Baseline Model",
           header=FALSE, 
           digits=3, notes = "SE in Parentheses")
 
-stargazer(final, title="Estimation Results for Final Model", 
+stargazer(maximal, final, title="Estimation Results for Interaction Models", 
           type="latex", 
           align=TRUE, 
-          out = "regtable.tex",
-          column.labels=c("self * odir", "self * odir, self * white, self * uria"), 
+          out = "regtable.tex", # column.labels=c("self * odir", "self * odir, self * white, self * uria"),   
           dep.var.caption="", 
           dep.var.labels.include = FALSE, 
           no.space=TRUE, 
