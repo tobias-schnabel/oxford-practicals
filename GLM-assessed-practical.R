@@ -10,6 +10,7 @@ library(MASS) # for stepwise AIC and BIC selection
 library(ggfortify)
 library(rsq)
 library(effects)
+library(gtools)
 
 ## Set Paths for tables and figures
 root = "/Users/ts/Git/Practicals"
@@ -280,17 +281,83 @@ step_bic <- step(baseline, direction = "backward", k = log(nrow(data)))
 # fit maximally interacted model
 maximal <- glm(approved ~ self * ., family = binomial, data = data)
 
-step_interact <- stepAIC(maximal, direction = "backward")
+step_interact_aic <- stepAIC(maximal, direction = "backward")
+step_interact_bic <- step(maximal, direction = "backward", k = log(nrow(data)))
+
+bic <- glm(approved ~ self + hir + odir + lvr + white, data = data, family = binomial)
 final <- glm(approved ~ uria + hir + odir + lvr + mcs + single + white + 
                         self*odir + self*white + self*uria + self, 
                       family = binomial, data = data)
 
-LRT_selection <- anova(final, maximal, test = "Chisq")
+LRT_selection <- anova(bic, final, maximal, test = "Chisq")
 model_selection <- xtable(LRT_selection, caption = "Model Selection: LRT Results")
+
+# make table
+modelmat <- matrix(NA, 5, 4)
+modelmat[1,1] <- length(coef(baseline))
+modelmat[2,1] <- length(coef(baseline_num))
+modelmat[3,1] <- length(coef(bic))
+modelmat[4,1] <- length(coef(final))
+modelmat[5,1] <- length(coef(maximal))
+
+modelmat[1,2] <- AIC(baseline)
+modelmat[2,2] <- AIC(baseline_num)
+modelmat[3,2] <- AIC(bic)
+modelmat[4,2] <- AIC(final)
+modelmat[5,2] <- AIC(maximal)
+
+modelmat[1,3] <- BIC(baseline)
+modelmat[2,3] <- BIC(baseline_num)
+modelmat[3,3] <- BIC(bic)
+modelmat[4,3] <- BIC(final)
+modelmat[5,3] <- BIC(maximal)
+
+modelmat[1,4] <- rsq.kl(baseline)
+modelmat[2,4] <- rsq.kl(baseline_num)
+modelmat[3,4] <- rsq.kl(bic)
+modelmat[4,4] <- rsq.kl(final)
+modelmat[5,4] <- rsq.kl(maximal)
+rownames(modelmat) <- c("Baseline", "Baseline (MCS numerical)", "BIC Model",
+                         "Final Model", "Maximal Interaction Model")
+colnames(modelmat) <- c("p", "AIC", "BIC", "$R^2_{KL}$")
+model_tab <- xtable(modelmat, caption = "Model Selection", align = c("r", rep("c", 4)))
+sanitize_latex <- function(x) {
+  gsub("\\$", "\\\\\\$", x, fixed = TRUE)
+}
 
 
 #### Diagnostics ####
 rsq.kl(final)
+# Cook's distance / lev
+plot(final, which = 4)
+#### Interpretation ####
+uria_effect <- Effect(focal.predictors = "uria", mod = final)
+plot(uria_effect, main = "Effect of URiA on Probability of Approval")
+
+# Create effect plot for the interaction between 'self' and 'odir'
+self_odir_effect <- Effect(focal.predictors = c("self", "odir"), mod = final)
+
+# Plot the interaction effect
+plot(self_odir_effect, main = "Interaction Effect of Self and ODIR on Probability of Approval")
+
+# Compute all main effects and interactions
+all_effects <- allEffects(final)
+
+# Plot all effects
+plot_list <- lapply(all_effects, plot)
+
+# Combine the plots into a grid (if they are not too many)
+do.call(grid.arrange, c(plot_list, ncol = 3))
+
+#### Dispersion ####
+n <- nrow(data)
+p <- length(coef(final)) 
+mu_hat <- predict(final, type = "response") 
+y <- as.numeric(data$approved ) - 1
+V_mu_hat <- mu_hat * (1 - mu_hat) # Variance function for binomial distribution
+
+phi_hat <- 1 / (n - p) * sum((y - mu_hat)^2 / V_mu_hat)
+phi_hat
 
 
 #### Export ####
@@ -311,6 +378,12 @@ print.xtable(mcs_table, type = "latex", file = "mcs.tex",
              caption.placement = "top", 
              table.placement = "H")
 
+print.xtable(model_tab, type = "latex", file = "models.tex", 
+             include.rownames = TRUE, digits = 3,
+             caption.placement = "top",
+             sanitize.text.function = sanitize_latex,
+             table.placement = "H")
+
 stargazer(baseline, baseline_num, title="Estimation Results for Baseline Model", 
           type="latex", 
           align=TRUE, 
@@ -323,10 +396,11 @@ stargazer(baseline, baseline_num, title="Estimation Results for Baseline Model",
           header=FALSE, 
           digits=3, notes = "SE in Parentheses")
 
-stargazer(maximal, final, title="Estimation Results for Interaction Models", 
+stargazer(bic, final, maximal, title="Estimation Results for Interaction Models", 
           type="latex", 
           align=TRUE, 
           out = "regtable.tex", # column.labels=c("self * odir", "self * odir, self * white, self * uria"),   
+          column.labels=c("BIC Model", "Final Model", "Maximal Interation Model"),
           dep.var.caption="", 
           dep.var.labels.include = FALSE, 
           no.space=TRUE, 
