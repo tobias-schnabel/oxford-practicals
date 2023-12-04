@@ -12,6 +12,7 @@ library(rsq)
 library(effects)
 library(gtools)
 library(marginaleffects)
+library(ggeffects)
 # Get colors from the tableau palette
 plotcolors <- ggthemes::tableau_color_pal()(10)
 ## Set Paths for tables and figures
@@ -257,6 +258,25 @@ colnames(AME_adj) <- c("Term", "Contrast", "Est. Coef. (OR scale)", "SE", "95% C
 resultstable_adj <- xtable(AME_adj, caption = "Estimation Results on Odds Ratio Scale, adjusted for Overdispersion",
                        align = c("r", rep("c", 7)), 
                        include.rownames = F, digits = 3)
+
+# Effect plots
+# Compute predicted effects for 'uria' on the odds ratio scale
+pred <- ggpredict(final, terms = "uria")
+# Transformation to odds ratio scale
+f.trans <- function(x) exp(x)
+
+# Inverse transformation from odds ratio scale
+f.inverse <- function(x) log(x)
+eff_uria <-  Effect("uria", final)
+plot(eff_uria, lines = list(multiline = TRUE),
+     confint = list(style = "auto"),
+     axes = list(x = list(age = list(lab = "Unempl. Rate (%)")),
+                 y = list(transform = list(trans = f.trans, inverse = f.inverse),
+                          type = "link",
+                          lab = "Odds Ratio")),
+     lattice = list(key.args = list(x = .20, y = .75, corner = c(0, 0), padding.text = 1.25)),
+     main = ""
+)
 
 
 plot_list <- lapply(names(all_effects), function(name) {
