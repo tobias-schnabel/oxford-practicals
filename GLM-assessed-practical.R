@@ -79,17 +79,15 @@ data_num <- data_raw %>% mutate(
   white = as.factor(white),
 )
 
-# Refit full model usin mcs as numerical
+# Refit full model using mcs as numerical
 baseline_num <- glm(approved ~ ., data = data_num, 
                     family = binomial(link = "logit"))
 
 # stepwise AIC on baseline
 step_aic <- stepAIC(baseline, direction = "backward")
-# AIC deteriorates when we drop predictors
 
 # stepwise BIC on baseline
 step_bic <- step(baseline, direction = "backward", k = log(nrow(data)))
-# BIC also deteriorates
 
 # Interaction terms
 # fit maximally interacted model
@@ -119,7 +117,6 @@ modelmat_additive[3,1] <- length(coef(step_bic))
 modelmat_interact[1,1] <- length(coef(maximal))
 modelmat_interact[2,1] <- length(coef(bic))
 modelmat_interact[3,1] <- length(coef(final))
-
 
 modelmat_additive[1,2] <- AIC(baseline)
 modelmat_additive[2,2] <- AIC(step_aic)
@@ -161,9 +158,7 @@ sanitize_latex <- function(x) {
   gsub("\\$", "\\\\\\$", x, fixed = T)
 }
 
-
 #### Diagnostics ####
-rsq.kl(final)
 # Compute Cook's distances
 cooks_distances <- cooks.distance(final)
 # Create df for plotting
@@ -188,10 +183,9 @@ cooks <- ggplot(cooks_df, aes(x = Index, y = CooksDistance)) +
   theme(legend.position = "none")
 
 # Pull points that have high cook's dist
-# Extract indices where Cook's distance is greater than the cutoff
 influential_indices <- cooks_df$Index[cooks_df$CooksDistance > cutoff]
 
-# Subset the original data using these indices
+# Subset data using indices
 influential_points <- data[influential_indices, ] %>% 
   mutate(Index = influential_indices) %>% 
   dplyr::select(Index, everything())
@@ -401,16 +395,13 @@ interaction_eff_plot_uria <- plot(predictorEffect("uria", final),
                                x=list(rug=T)), main = "uria * self",
                      lines=list(col=plotcolors[7]))
 
-
-# Collect plots
+# Collect
 interaction_effect_plot_list <- lapply(ls(pattern = "^interaction_eff_plot_"), 
                                        get)
 # Arrange
 interaction_effect_plots <- do.call(grid.arrange, 
                                     c(interaction_effect_plot_list, nrow = 1))
 #### EDA plots ####
-# plot colors
-plotcolors <- ggthemes::tableau_color_pal()(10)
 # Continuous predictors, bivariate
 plot_hir <- ggplot(data, aes(x = approved, y = hir, fill = approved)) +
   geom_violin(trim = T) + # Add violin plot
@@ -567,7 +558,6 @@ prop_plots <- (prop_plot_mcs|prop_plot_self|prop_plot_single|prop_plot_white)
 plot_deciles <- function(var_name) {
   
   var <- data[[var_name]]
-  
   # Calculate group-wise means
   breaks <- quantile(var, probs = seq(0, 1, by = 0.1), na.rm = T, 
                      names = F, type = 7)
@@ -598,7 +588,7 @@ decile_odir <- plot_deciles('odir')
 decile_lvr <- plot_deciles('lvr')
 decile_uria <- plot_deciles('uria')
 
-# Stack the plots vertically
+# Stack the plots
 decile_plots <- decile_hir / decile_odir / decile_lvr / decile_uria
 
 #### Export ####
