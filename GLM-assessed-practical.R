@@ -355,22 +355,22 @@ effects <- do.call(grid.arrange, c(plot_list, ncol = 3))
 # Manually for plot formatting
 ## Focal predictors (not included in interaction terms)
 eff_plot_hir <- plot(predictorEffect("hir", final),
-     axes=list(y=list(type="response"),
+     axes=list(y=list(type="response", lab = "P (approved)"),
                x=list(rug=T)), main = "hir",
      lines=list(col=plotcolors[1]))
 
 eff_plot_lvr <- plot(predictorEffect("lvr", final),
-              axes=list(y=list(type="response"),
+              axes=list(y=list(type="response", lab = "P (approved)"),
                         x=list(rug=T)), main = "lvr",
               lines=list(col=plotcolors[2]))
 
 eff_plot_mcs <- plot(predictorEffect("mcs", final),
-              axes=list(y=list(type="response"),
+              axes=list(y=list(type="response", lab = "P (approved)"),
                         x=list(rug=T)), main = "mcs",
               lines=list(col=plotcolors[3]))
 
 eff_plot_single <- plot(predictorEffect("single", final),
-              axes=list(y=list(type="response"),
+              axes=list(y=list(type="response", lab = "P (approved)"),
                         x=list(rug=T)), main = "single",
               lines=list(col=plotcolors[4]))
 # Collect plots
@@ -381,17 +381,17 @@ focal_effect_plots <- do.call(grid.arrange,
 
 ## Interaction Terms
 interaction_eff_plot_odir <- plot(predictorEffect("odir", final),
-                     axes=list(y=list(type="response"),
+                     axes=list(y=list(type="response", lab = "P (approved)"),
                                x=list(rug=T)), main = "odir * self",
                      lines=list(col=plotcolors[5]))
 
 interaction_eff_plot_white <- plot(predictorEffect("white", final),
-                     axes=list(y=list(type="response"),
+                     axes=list(y=list(type="response", lab = "P (approved)"),
                                x=list(rug=T)), main = "white * self",
                      lines=list(col=plotcolors[8]))
 
 interaction_eff_plot_uria <- plot(predictorEffect("uria", final),
-                     axes=list(y=list(type="response"),
+                     axes=list(y=list(type="response", lab = "P (approved)"),
                                x=list(rug=T)), main = "uria * self",
                      lines=list(col=plotcolors[7]))
 
@@ -400,7 +400,7 @@ interaction_effect_plot_list <- lapply(ls(pattern = "^interaction_eff_plot_"),
                                        get)
 # Arrange
 interaction_effect_plots <- do.call(grid.arrange, 
-                                    c(interaction_effect_plot_list, nrow = 1))
+                                    c(interaction_effect_plot_list, nrow = 3))
 #### EDA plots ####
 # Continuous predictors, bivariate
 plot_hir <- ggplot(data, aes(x = approved, y = hir, fill = approved)) +
@@ -682,6 +682,6 @@ ggsave(plot = decile_plots, "decileplots.png")
 ggsave(plot = cooks, "cooksdist.png")
 ggsave(plot = effects, "effects.png", dpi = 1000, height = 30, width = 30, units = "cm")
 ggsave(plot = focal_effect_plots, "focal-effects.png", dpi = 1000, height = 30, width = 30, units = "cm")
-ggsave(plot = interaction_effect_plots, "interaction-effects.png", dpi = 1000, height = 30, width = 30, units = "cm")
+ggsave(plot = interaction_effect_plots, "interaction-effects.png", dpi = 1000, height = 30, width = 20, units = "cm")
 setwd(root)
 
