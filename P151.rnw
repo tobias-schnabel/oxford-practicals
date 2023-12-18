@@ -609,10 +609,12 @@ test_that("gamma and gamma2 produce the same outputs", {
 })
 
 @
-% \begin{enumerate}
-% \item Based on the previous discussion, executing \texttt{forward2} and \texttt{backward2} each costs $\mathcal{O}(K \cdot T)$. Computing the normalization factor involves summing over one column of the \texttt{alpha} matrix, which is $\mathcal{O}(K)$. The nested loop structure for updating the \texttt{gamma} matrix involves iterating over $T$ and each $K$. Within the inner loop, the operation to calculate each entry is $\mathcal{O}(1)$. Therefore, the complexity of updating the gamma matrix is $\mathcal{O}(K \cdot T)$. With 3 operations in $\mathcal{O}(K \cdot T)$, the overall time complexity of \texttt{gamma2} is $\mathcal{O}(K \cdot T)$.
-% \item By the same logic, executing \texttt{forward} and \texttt{backward} each costs $\mathcal{O}(K^2 \cdot T)$, which dominates the other terms that contribute to the time complexity of \texttt{gamma}, which as an overall time complexity of $\mathcal{O}(K^2 \cdot T)$
-% \end{enumerate}
+
+\subsection{Computational Complexity of \texttt{gamma} and \texttt{gamma2}}
+\begin{enumerate}
+\item Based on the previous discussion, executing \texttt{forward2} and \texttt{backward2} each costs $\mathcal{O}(K \cdot T)$. Computing the normalization factor involves summing over one column of the \texttt{alpha} matrix, which is $\mathcal{O}(K)$. The nested loop structure for updating the \texttt{gamma} matrix involves iterating over $T$ and each $K$. Within the inner loop, the operation to calculate each entry is $\mathcal{O}(1)$. Therefore, the complexity of updating the gamma matrix is $\mathcal{O}(K \cdot T)$. With 3 operations in $\mathcal{O}(K \cdot T)$, the overall time complexity of \texttt{gamma2} is $\mathcal{O}(K \cdot T)$.
+\item By the same logic, executing \texttt{forward} and \texttt{backward} each costs $\mathcal{O}(K^2 \cdot T)$, which dominates the other terms that contribute to the time complexity of \texttt{gamma}, which as an overall time complexity of $\mathcal{O}(K^2 \cdot T)$
+\end{enumerate}
 
 Figures \ref{fig8} and \ref{fig9} below show that the empirical time complexity of \texttt{gamma} and \texttt{gamma2} indeed matches the reasoning laid out above.
 \begin{figure}[h!]
